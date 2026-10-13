@@ -9,7 +9,7 @@
     </parent>
     <artifactId>agent-inspector-spring-boot-starter</artifactId>
     <name>agent-inspector-spring-boot-starter</name>
-    <description>Routes a Spring AI app's model traffic through a running Agent Inspector</description>
+    <description>Routes a Spring AI app's model traffic through an Agent Inspector, starting one in the app if none is running</description>
 
     <dependencies>
         <dependency>
@@ -19,6 +19,11 @@
         <dependency>
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- Started inside the app when no inspector is running. -->
+        <dependency>
+            <groupId>ek.osnb</groupId>
+            <artifactId>agent-inspector-server</artifactId>
         </dependency>
         <!-- Provided by the Spring AI app this starter is added to. -->
         <dependency>

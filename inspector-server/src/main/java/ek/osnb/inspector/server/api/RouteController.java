@@ -1,6 +1,7 @@
 package ek.osnb.inspector.server.api;
 
 import ek.osnb.inspector.server.proxy.RouteRegistry;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,14 +28,23 @@ public class RouteController {
     }
 
     private final RouteRegistry routes;
+    private final boolean embedded;
 
-    public RouteController(RouteRegistry routes) {
+    /**
+     * @param embedded true when the starter started this inspector inside an application
+     */
+    public RouteController(RouteRegistry routes, @Value("${agent.inspector.embedded:false}") boolean embedded) {
         this.routes = routes;
+        this.embedded = embedded;
     }
 
+    /**
+     * Identifies the inspector. An app only routes its traffic to an inspector embedded in another
+     * app's process if it has to, since stopping that app would take the inspector down with it.
+     */
     @GetMapping("/ping")
     public Map<String, Object> ping() {
-        return Map.of("name", SIGNATURE, "api", 1);
+        return Map.of("name", SIGNATURE, "api", 1, "embedded", embedded, "pid", ProcessHandle.current().pid());
     }
 
     @GetMapping("/routes")

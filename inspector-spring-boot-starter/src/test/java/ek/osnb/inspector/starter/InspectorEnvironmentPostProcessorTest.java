@@ -6,9 +6,18 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntPredicate;
 
 import static ek.osnb.inspector.starter.FakeInspector.inspector;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,6 +28,7 @@ class InspectorEnvironmentPostProcessorTest {
     static final String ANTHROPIC = "org.springframework.ai.anthropic.AnthropicChatModel";
 
     final Map<String, String> envVariables = new HashMap<>();
+    final List<Integer> embedAttempts = new ArrayList<>();
 
     @Test
     void routesDockerModelRunnerThroughTheInspector() throws Exception {
@@ -88,13 +98,63 @@ class InspectorEnvironmentPostProcessorTest {
     }
 
     @Test
-    void changesNothingWhenTheInspectorIsNotRunning() {
+    void changesNothingWhenNoInspectorRunsOrCanBeStarted() {
         StandardEnvironment environment = run(Set.of(OPENAI), Map.of(
                 "agent.inspector.url", "http://127.0.0.1:1",
                 "spring.ai.openai.base-url", "http://localhost:12434/engines/v1"));
 
         assertThat(environment.getProperty("spring.ai.openai.base-url")).isEqualTo("http://localhost:12434/engines/v1");
         assertThat(environment.getProperty("agent.inspector.active")).isNull();
+        assertThat(embedAttempts).as("tried the configured port and the next ones").startsWith(1, 2);
+    }
+
+    @Test
+    void startsAnInspectorInsideTheAppWhenNoneRuns() throws Exception {
+        String url = "http://localhost:" + freePort();
+        try {
+            StandardEnvironment environment = run(Set.of(OPENAI), Map.of(
+                    "agent.inspector.url", url,
+                    "spring.ai.openai.base-url", "http://localhost:12434/engines/v1"), EmbeddedInspector::start);
+
+            assertThat(environment.getProperty("spring.ai.openai.base-url")).isEqualTo(url + "/proxy/app-openai");
+            assertThat(environment.getProperty("agent.inspector.url")).isEqualTo(url);
+            InspectorConnection.Ping ping = new InspectorConnection(url).ping();
+            assertThat(ping.embedded()).isTrue();
+            assertThat(ping.pid()).isEqualTo(ProcessHandle.current().pid());
+            HttpResponse<String> ui = HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create(url + "/")).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertThat(ui.body()).contains("<title>Agent Inspector</title>");
+
+            // After a DevTools restart, the app finds the inspector it started and uses it again.
+            StandardEnvironment restarted = run(Set.of(OPENAI), Map.of("agent.inspector.url", url), port -> {
+                throw new AssertionError("started a second inspector");
+            });
+            assertThat(restarted.getProperty("spring.ai.openai.base-url")).isEqualTo(url + "/proxy/app-openai");
+        } finally {
+            EmbeddedInspector.stop();
+        }
+    }
+
+    @Test
+    void doesNotUseAnotherAppsEmbeddedInspector() throws Exception {
+        try (FakeInspector otherApp = new FakeInspector("{\"name\":\"agent-inspector\",\"api\":1,\"embedded\":true,\"pid\":1}")) {
+            int port = URI.create(otherApp.url()).getPort();
+            run(Set.of(OPENAI), Map.of("agent.inspector.url", otherApp.url()));
+
+            assertThat(otherApp.posted).isEmpty();
+            assertThat(embedAttempts).isNotEmpty().allMatch(attempt -> attempt > port);
+        }
+    }
+
+    @Test
+    void neverStartsAnInspectorInTestsOrWhenTurnedOffOrForARemoteUrl() {
+        run(Set.of(OPENAI), Map.of("agent.inspector.url", "http://127.0.0.1:1",
+                "org.springframework.boot.test.context.SpringBootTestContextBootstrapper", "true"));
+        run(Set.of(OPENAI), Map.of("agent.inspector.url", "http://127.0.0.1:1",
+                "agent.inspector.embedded.enabled", "false"));
+        run(Set.of(OPENAI), Map.of("agent.inspector.url", "http://inspector.invalid:7070"));
+
+        assertThat(embedAttempts).isEmpty();
     }
 
     @Test
@@ -125,12 +185,26 @@ class InspectorEnvironmentPostProcessorTest {
         assertThat(InspectorEnvironmentPostProcessor.routeName("--x--")).isEqualTo("x");
     }
 
+    /** Runs the post-processor; asked to start an embedded inspector, it only records the port. */
     private StandardEnvironment run(Set<String> classesOnClasspath, Map<String, Object> properties) {
+        return run(classesOnClasspath, properties, port -> {
+            embedAttempts.add(port);
+            return false;
+        });
+    }
+
+    private StandardEnvironment run(Set<String> classesOnClasspath, Map<String, Object> properties, IntPredicate embed) {
         StandardEnvironment environment = new StandardEnvironment();
         environment.getPropertySources().addFirst(new MapPropertySource("test", properties));
         new InspectorEnvironmentPostProcessor(LogFactory.getLog(getClass()), classesOnClasspath::contains,
-                envVariables::get, InspectorConnection::new)
+                envVariables::get, InspectorConnection::new, embed)
                 .postProcessEnvironment(environment, new SpringApplication());
         return environment;
+    }
+
+    private static int freePort() throws IOException {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        }
     }
 }

@@ -30,6 +30,11 @@
         <dependencies>
             <dependency>
                 <groupId>ek.osnb</groupId>
+                <artifactId>agent-inspector-server</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ek.osnb</groupId>
                 <artifactId>agent-inspector-spring-boot-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
