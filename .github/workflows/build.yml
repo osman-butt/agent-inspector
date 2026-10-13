@@ -31,7 +31,7 @@ jobs:
         run: ./mvnw -B verify
 
       - name: Test the UI
-        run: node --test inspector-server/src/test/js/
+        run: node --test 'inspector-server/src/test/js/*.test.mjs'
 
       - name: Publish snapshot
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

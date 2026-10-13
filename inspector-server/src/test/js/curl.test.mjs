@@ -1,4 +1,4 @@
-// Run with: node --test inspector-server/src/test/js/
+// Run with: node --test 'inspector-server/src/test/js/*.test.mjs'
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
