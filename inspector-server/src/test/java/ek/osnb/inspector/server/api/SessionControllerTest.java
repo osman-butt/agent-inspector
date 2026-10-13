@@ -83,6 +83,25 @@ class SessionControllerTest {
     }
 
     @Test
+    void reportedToolExecutionsAreLinkedByToolCallId() {
+        assertThat(mvc.post().uri("/api/tool-executions").contentType("application/json").content("""
+                {"app": "inspector-sample", "toolCallId": "giiqHefFwpjJ8nG4xulRxj0Nf8mfkWxi", "name": "currentTime",
+                 "arguments": "{\\"zone\\": \\"Europe/Copenhagen\\"}", "result": "\\"2026-10-13T16:44:27+02:00\\"",
+                 "startedAt": "2026-10-13T14:44:27Z", "durationMs": 3}
+                """)).hasStatus(202);
+
+        assertThat(mvc.get().uri("/api/sessions/{id}", sessionId))
+                .bodyJson()
+                .isLenientlyEqualTo("""
+                        {"toolExecutions": {"giiqHefFwpjJ8nG4xulRxj0Nf8mfkWxi": {"name": "currentTime", "durationMs": 3}}}
+                        """);
+        String firstRoundTrip = tracker.exchangeIds(sessionId).getFirst();
+        assertThat(mvc.get().uri("/api/exchanges/{id}", firstRoundTrip))
+                .bodyJson()
+                .extractingPath("$.toolExecutions.giiqHefFwpjJ8nG4xulRxj0Nf8mfkWxi.app").isEqualTo("inspector-sample");
+    }
+
+    @Test
     void unknownSessionIsNotFound() {
         assertThat(mvc.get().uri("/api/sessions/nope")).hasStatus(404);
     }

@@ -1,4 +1,4 @@
-import {escapeHtml, highlightJson, tryParseJson} from '../util.js';
+import {escapeHtml, formatDuration, highlightJson, tryParseJson} from '../util.js';
 
 /** Tool call id -> tool name, so a result can say which tool it answers. */
 export function toolNames(messages) {
@@ -19,7 +19,18 @@ function jsonOrText(text) {
     return json !== undefined && typeof json === 'object' ? highlightJson(json) : escapeHtml(text);
 }
 
-function renderPart(part, names) {
+/** What the app reported about running a tool (needs the starter): duration, failure, result. */
+function renderExecution(execution) {
+    if (!execution) {
+        return '';
+    }
+    const ran = `ran ${escapeHtml(formatDuration(execution.durationMs))} in ${escapeHtml(execution.app ?? 'the app')}`;
+    return execution.error
+        ? `<div class="tool-exec failed">✗ ${ran}, failed: ${escapeHtml(execution.error)}</div>`
+        : `<div class="tool-exec">✓ ${ran}</div>`;
+}
+
+function renderPart(part, names, executions) {
     switch (part.type) {
         case 'text':
             return `<div class="part-text">${escapeHtml(part.text)}</div>`;
@@ -31,24 +42,27 @@ function renderPart(part, names) {
                     <div class="tool-head"><span class="tool-arrow">→</span> calls <b>${escapeHtml(part.name)}</b>
                         <span class="muted tool-id">${escapeHtml(part.id ?? '')}</span></div>
                     <pre>${jsonOrText(part.arguments ?? '')}</pre>
+                    ${renderExecution(executions[part.id])}
                 </div>`;
-        case 'tool_result':
+        case 'tool_result': {
+            const failed = part.error || executions[part.toolCallId]?.error;
             return `
-                <div class="tool-card result ${part.error ? 'failed' : ''}">
+                <div class="tool-card result ${failed ? 'failed' : ''}">
                     <div class="tool-head"><span class="tool-arrow">←</span> result of
                         <b>${escapeHtml(names.get(part.toolCallId) ?? 'tool')}</b>
-                        ${part.error ? '<span class="badge status-bad">error</span>' : ''}
+                        ${failed ? '<span class="badge status-bad">error</span>' : ''}
                         <span class="muted tool-id">${escapeHtml(part.toolCallId ?? '')}</span></div>
                     <pre>${jsonOrText(part.content ?? '')}</pre>
                 </div>`;
+        }
         default:
             return `<div class="muted">[${escapeHtml(part.label ?? part.type)}]</div>`;
     }
 }
 
-export function renderMessage(message, names, extraClass = '') {
+export function renderMessage(message, names, extraClass = '', executions = {}) {
     const parts = message.parts.length
-        ? message.parts.map(part => renderPart(part, names)).join('')
+        ? message.parts.map(part => renderPart(part, names, executions)).join('')
         : '<div class="muted">(empty)</div>';
     const role = escapeHtml(message.role);
     // System prompts are often long and the same every time: fold them, with a preview.
@@ -81,23 +95,24 @@ function renderTools(tools) {
 }
 
 /** Messages already sent in earlier round-trips of the session are folded away, so the new ones stand out. */
-function renderSent(messages, newFrom, names) {
+function renderSent(messages, newFrom, names, executions) {
     if (!newFrom) {
-        return messages.map(message => renderMessage(message, names)).join('');
+        return messages.map(message => renderMessage(message, names, '', executions)).join('');
     }
     return `
         <details class="resent">
             <summary>↺ ${newFrom} message${newFrom === 1 ? '' : 's'} re-sent from earlier round-trips</summary>
-            ${messages.slice(0, newFrom).map(message => renderMessage(message, names)).join('')}
+            ${messages.slice(0, newFrom).map(message => renderMessage(message, names, '', executions)).join('')}
         </details>
-        ${messages.slice(newFrom).map(message => renderMessage(message, names, 'new')).join('')}`;
+        ${messages.slice(newFrom).map(message => renderMessage(message, names, 'new', executions)).join('')}`;
 }
 
 export function renderConversation(exchange) {
     const parsed = exchange.parsed;
     const names = toolNames([...parsed.messages, parsed.output]);
+    const executions = exchange.toolExecutions ?? {};
     const answer = parsed.output
-        ? renderMessage(parsed.output, names, 'answer')
+        ? renderMessage(parsed.output, names, 'answer', executions)
         : parsed.error
             ? `<div class="box error"><pre>${escapeHtml(parsed.error)}</pre></div>`
             : '<p class="muted">Waiting for the model…</p>';
@@ -105,7 +120,7 @@ export function renderConversation(exchange) {
         ${renderTools(parsed.tools)}
         <div class="section">
             <h3>Sent to the model (${parsed.messages.length} messages)</h3>
-            ${renderSent(parsed.messages, exchange.session?.newFrom ?? 0, names)}
+            ${renderSent(parsed.messages, exchange.session?.newFrom ?? 0, names, executions)}
         </div>
         <div class="section">
             <h3>Model answer${parsed.finishReason ? ` · <span class="finish">${escapeHtml(parsed.finishReason)}</span>` : ''}</h3>

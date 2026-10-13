@@ -5,6 +5,7 @@ import ek.osnb.inspector.server.capture.ExchangeStore.ExchangeSaved;
 import ek.osnb.inspector.server.capture.ExchangeStore.StoreCleared;
 import ek.osnb.inspector.server.session.SessionTracker.SessionUpdated;
 import ek.osnb.inspector.server.session.SessionViews;
+import ek.osnb.inspector.server.tools.ToolExecutionStore.ToolExecutionSaved;
 import ek.osnb.inspector.server.wire.WireParsers;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
@@ -20,7 +21,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /**
  * Pushes store changes to every open UI over server-sent events: an {@code exchange} event
  * with the summary of each new or completed exchange, a {@code session} event with the
- * summary of the session it belongs to, and a {@code cleared} event.
+ * summary of the session it belongs to, a {@code tool} event for each tool execution the
+ * starter reports, and a {@code cleared} event.
  */
 @RestController
 public class LiveUpdates {
@@ -55,6 +57,11 @@ public class LiveUpdates {
     void onSessionUpdated(SessionUpdated updated) {
         sessions.summary(updated.sessionId())
                 .ifPresent(summary -> broadcast(SseEmitter.event().name("session").data(summary)));
+    }
+
+    @EventListener
+    void onToolExecution(ToolExecutionSaved saved) {
+        broadcast(SseEmitter.event().name("tool").data(saved.execution()));
     }
 
     @EventListener

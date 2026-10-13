@@ -134,6 +134,12 @@ function connect() {
             showDetail();
         }
     });
+    source.addEventListener('tool', event => {
+        const execution = JSON.parse(event.data);
+        if (detailEl.querySelector(`[data-tool-call-id="${CSS.escape(execution.toolCallId ?? '')}"]`)) {
+            showDetail();
+        }
+    });
     source.addEventListener('cleared', () => {
         state.sessions = [];
         state.exchanges = [];

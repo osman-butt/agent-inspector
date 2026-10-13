@@ -3,6 +3,7 @@ package ek.osnb.inspector.server.session;
 import ek.osnb.inspector.server.api.ExchangeSummary;
 import ek.osnb.inspector.server.capture.Exchange;
 import ek.osnb.inspector.server.capture.ExchangeStore;
+import ek.osnb.inspector.server.tools.ToolExecutionStore;
 import ek.osnb.inspector.server.wire.ChatMessage;
 import ek.osnb.inspector.server.wire.ParsedExchange;
 import ek.osnb.inspector.server.wire.Part;
@@ -21,11 +22,14 @@ public class SessionViews {
     private final SessionTracker tracker;
     private final ExchangeStore store;
     private final WireParsers parsers;
+    private final ToolExecutionStore toolExecutions;
 
-    public SessionViews(SessionTracker tracker, ExchangeStore store, WireParsers parsers) {
+    public SessionViews(SessionTracker tracker, ExchangeStore store, WireParsers parsers,
+                        ToolExecutionStore toolExecutions) {
         this.tracker = tracker;
         this.store = store;
         this.parsers = parsers;
+        this.toolExecutions = toolExecutions;
     }
 
     private record Round(Exchange exchange, ParsedExchange parsed) {
@@ -58,7 +62,8 @@ public class SessionViews {
                     round.parsed().finishReason(),
                     round.parsed().error()));
         }
-        return Optional.of(new SessionDetail(summarize(sessionId, rounds), turns));
+        List<String> toolCallIds = rounds.stream().flatMap(round -> round.parsed().toolCallIds().stream()).toList();
+        return Optional.of(new SessionDetail(summarize(sessionId, rounds), turns, toolExecutions.forToolCalls(toolCallIds)));
     }
 
     private List<Round> rounds(String sessionId) {

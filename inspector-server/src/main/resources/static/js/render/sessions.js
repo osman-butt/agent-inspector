@@ -33,10 +33,10 @@ export function renderSessionList(container, sessions, selectedId) {
         </button>`).join('');
 }
 
-function renderTurn(turn, index, names) {
+function renderTurn(turn, index, names, executions) {
     const exchange = turn.exchange;
     const answer = turn.output
-        ? renderMessage(turn.output, names, 'answer')
+        ? renderMessage(turn.output, names, 'answer', executions)
         : turn.error
             ? `<div class="box error"><pre>${escapeHtml(turn.error)}</pre></div>`
             : '<p class="muted">Waiting for the model…</p>';
@@ -51,7 +51,7 @@ function renderTurn(turn, index, names) {
                 ${turn.finishReason ? `<span class="badge">${escapeHtml(turn.finishReason)}</span>` : ''}
             </div>
             ${turn.resent ? `<div class="resent-note muted">↺ ${plural(turn.resent, 'earlier message')} re-sent</div>` : ''}
-            ${turn.newMessages.map(message => renderMessage(message, names, turn.resent ? 'new' : '')).join('')}
+            ${turn.newMessages.map(message => renderMessage(message, names, turn.resent ? 'new' : '', executions)).join('')}
             ${answer}
         </li>`;
 }
@@ -73,5 +73,5 @@ export function renderSessionDetail(session) {
                 ${summary.failed ? '<span class="badge status-bad">failed</span>' : ''}
             </div>
         </div>
-        <ol class="timeline">${turns.map((turn, index) => renderTurn(turn, index, names)).join('')}</ol>`;
+        <ol class="timeline">${turns.map((turn, index) => renderTurn(turn, index, names, session.toolExecutions ?? {})).join('')}</ol>`;
 }

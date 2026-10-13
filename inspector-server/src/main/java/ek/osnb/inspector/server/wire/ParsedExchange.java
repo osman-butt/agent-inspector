@@ -1,8 +1,10 @@
 package ek.osnb.inspector.server.wire;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import tools.jackson.databind.JsonNode;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * A model round-trip in a provider-neutral shape: what the app sent (messages, offered
@@ -22,6 +24,16 @@ public record ParsedExchange(
         String finishReason,
         Usage usage,
         String error) {
+
+    /** Ids of every tool call in this round-trip: the ones re-sent in the request and the ones in the answer. */
+    @JsonIgnore
+    public List<String> toolCallIds() {
+        return Stream.concat(messages.stream(), Stream.ofNullable(output))
+                .flatMap(message -> message.parts().stream())
+                .filter(Part.ToolCall.class::isInstance)
+                .map(part -> ((Part.ToolCall) part).id())
+                .toList();
+    }
 
     public record ToolSpec(String name, String description, JsonNode schema) {
     }
