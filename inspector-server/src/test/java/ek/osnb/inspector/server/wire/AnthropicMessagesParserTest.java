@@ -35,6 +35,12 @@ class AnthropicMessagesParserTest {
                 new Part.ToolCall("toolu_01A09q90qw90lq917835lq9", "weather", "{\"city\":\"Copenhagen\"}"));
         assertThat(parsed.finishReason()).isEqualTo("tool_use");
         assertThat(parsed.usage()).isEqualTo(new Usage(412, 58, 1024, 0));
+
+        // the system field, messages[i], and the whole response, which is the assistant message
+        assertThat(parsed.messages().getFirst().raw().path(0).path("cache_control").path("type").stringValue())
+                .isEqualTo("ephemeral");
+        assertThat(parsed.messages().get(1).raw().path("role").stringValue()).isEqualTo("user");
+        assertThat(parsed.output().raw().path("id").stringValue()).isEqualTo("msg_01XFDUDYJgAACzvnptvVoYEL");
     }
 
     @Test
@@ -53,6 +59,7 @@ class AnthropicMessagesParserTest {
         assertThat(parsed.messages().get(3).parts()).containsExactly(
                 new Part.ToolResult("toolu_01A", "{\"city\":\"Copenhagen\",\"temperatureCelsius\":1,\"conditions\":\"windy\"}", false),
                 new Part.ToolResult("toolu_01B", "Unknown city: Atlantis", true));
+        assertThat(parsed.messages().get(3).raw().path("content").path(1).path("is_error").booleanValue()).isTrue();
         assertThat(parsed.tools()).extracting(ParsedExchange.ToolSpec::name).containsExactly("weather", "web_search");
         assertThat(parsed.tools().get(1).schema()).isNull();
         assertThat(parsed.output()).isNull();
@@ -69,6 +76,7 @@ class AnthropicMessagesParserTest {
                 new Part.Text("Let me check that for you."),
                 new Part.ToolCall("toolu_01T1x1fJ34qAmk2tNTrN7Up6", "weather", "{\"city\": \"Copenhagen\"}"));
         assertThat(parsed.finishReason()).isEqualTo("tool_use");
+        assertThat(parsed.output().raw()).isNull();
         // input and cache tokens come with message_start, the final output tokens with message_delta
         assertThat(parsed.usage()).isEqualTo(new Usage(412, 89, 0, 1024));
     }

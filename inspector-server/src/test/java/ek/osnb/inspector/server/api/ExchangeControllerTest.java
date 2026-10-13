@@ -79,6 +79,10 @@ class ExchangeControllerTest {
                         {"parsed": {"output": {"role": "assistant", "parts": [
                           {"type": "tool_call", "id": "call_1", "name": "weather", "arguments": "{}"}]}}}
                         """);
+        // the message's wire JSON comes along as JSON, not as a string
+        assertThat(mvc.get().uri("/api/exchanges/{id}", toolCall.id()))
+                .bodyJson()
+                .extractingPath("$.parsed.output.raw.tool_calls[0].function.name").isEqualTo("weather");
     }
 
     @Test

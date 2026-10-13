@@ -149,7 +149,7 @@ public class OpenAiChatParser implements WireParser {
             parts.add(new Part.ToolCall(text(call.path("id")), text(function.path("name")),
                     textOrJson(function.path("arguments"))));
         }
-        return new ChatMessage(role, parts);
+        return new ChatMessage(role, parts, message.isMissingNode() ? null : message);
     }
 
     /** Content is either a string or an array of typed parts. */

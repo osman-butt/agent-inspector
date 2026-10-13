@@ -36,10 +36,10 @@ public class AnthropicMessagesParser implements WireParser {
         List<ChatMessage> messages = new ArrayList<>();
         JsonNode system = request.path("system");
         if (!system.isMissingNode() && !system.isNull()) {
-            messages.add(new ChatMessage("system", blocks(system)));
+            messages.add(new ChatMessage("system", blocks(system), system));
         }
         for (JsonNode message : request.path("messages")) {
-            messages.add(new ChatMessage(text(message.path("role")), blocks(message.path("content"))));
+            messages.add(new ChatMessage(text(message.path("role")), blocks(message.path("content")), message));
         }
         List<ToolSpec> tools = new ArrayList<>();
         for (JsonNode tool : request.path("tools")) {
@@ -66,7 +66,8 @@ public class AnthropicMessagesParser implements WireParser {
     private static Answer fromJson(JsonNode body) {
         JsonNode content = body.path("content");
         return new Answer(
-                content.isArray() ? new ChatMessage("assistant", blocks(content)) : null,
+                // The response is the assistant message itself: id, content blocks, stop reason, usage.
+                content.isArray() ? new ChatMessage("assistant", blocks(content), body) : null,
                 text(body.path("stop_reason")),
                 usage(body.path("usage"), null),
                 text(body.path("model")),

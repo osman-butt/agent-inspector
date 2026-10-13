@@ -40,6 +40,12 @@ class OpenAiChatParserTest {
         assertThat(parsed.finishReason()).isEqualTo("tool_calls");
         assertThat(parsed.usage()).isEqualTo(new Usage(310, 41, 0, null));
         assertThat(parsed.error()).isNull();
+
+        // the wire JSON of each message: the request's messages[i] and the response's choices[0].message
+        assertThat(parsed.messages().get(1).raw().path("content").stringValue())
+                .isEqualTo("What is the weather in Copenhagen and what time is it there?");
+        assertThat(parsed.output().raw().path("tool_calls").path(0).path("function").path("name").stringValue())
+                .isEqualTo("weather");
     }
 
     @Test
@@ -53,6 +59,8 @@ class OpenAiChatParserTest {
         assertThat(parsed.messages().get(3).parts()).containsExactly(new Part.ToolResult(
                 "dkkzu6IBP78L993owMdFsb55uQkLTmyg",
                 "{\"city\":\"Copenhagen\",\"temperatureCelsius\":1,\"conditions\":\"windy\"}", false));
+        assertThat(parsed.messages().get(3).raw().path("tool_call_id").stringValue())
+                .isEqualTo("dkkzu6IBP78L993owMdFsb55uQkLTmyg");
 
         assertThat(parsed.output().parts()).singleElement()
                 .isInstanceOfSatisfying(Part.Text.class, text -> assertThat(text.text()).startsWith("In Copenhagen"));
@@ -69,6 +77,7 @@ class OpenAiChatParserTest {
         assertThat(parsed.messages()).extracting(ChatMessage::role).containsExactly("system", "user");
         assertThat(parsed.output().parts()).containsExactly(
                 new Part.ToolCall("N62RNiGELvb7sJh3NuOCDAKi9tvHv81f", "weather", "{\"city\": \"Oslo\"}"));
+        assertThat(parsed.output().raw()).as("rebuilt from chunks, never one JSON object").isNull();
         assertThat(parsed.finishReason()).isEqualTo("tool_calls");
         assertThat(parsed.usage()).isEqualTo(new Usage(304, 20, 292, null));
     }
