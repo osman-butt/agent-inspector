@@ -1,0 +1,30 @@
+{
+  "model": "claude-sonnet-5-5",
+  "max_tokens": 1024,
+  "system": [
+    {
+      "type": "text",
+      "text": "You are a helpful assistant. Use the tools when they help. Answer briefly.",
+      "cache_control": {"type": "ephemeral"}
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is the weather in Copenhagen?"
+    }
+  ],
+  "tools": [
+    {
+      "name": "weather",
+      "description": "Current weather for a city",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "city": {"type": "string", "description": "City name"}
+        },
+        "required": ["city"]
+      }
+    }
+  ]
+}

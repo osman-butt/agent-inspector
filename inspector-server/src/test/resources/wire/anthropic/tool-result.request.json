@@ -1,0 +1,41 @@
+{
+  "model": "claude-sonnet-5-5",
+  "max_tokens": 1024,
+  "system": "You are a helpful assistant. Use the tools when they help. Answer briefly.",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "What is the weather in Copenhagen and Atlantis? Here is a map."},
+        {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": "iVBORw0KGgo="}}
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {"type": "thinking", "thinking": "Two cities, so two weather calls.", "signature": "EqQBCgIYAhIM"},
+        {"type": "tool_use", "id": "toolu_01A", "name": "weather", "input": {"city": "Copenhagen"}},
+        {"type": "tool_use", "id": "toolu_01B", "name": "weather", "input": {"city": "Atlantis"}}
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {"type": "tool_result", "tool_use_id": "toolu_01A", "content": "{\"city\":\"Copenhagen\",\"temperatureCelsius\":1,\"conditions\":\"windy\"}"},
+        {"type": "tool_result", "tool_use_id": "toolu_01B", "is_error": true, "content": [{"type": "text", "text": "Unknown city: Atlantis"}]}
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "name": "weather",
+      "description": "Current weather for a city",
+      "input_schema": {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+    },
+    {
+      "type": "web_search_20250305",
+      "name": "web_search",
+      "max_uses": 3
+    }
+  ]
+}

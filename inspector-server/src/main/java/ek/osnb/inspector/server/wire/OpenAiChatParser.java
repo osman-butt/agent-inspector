@@ -53,7 +53,7 @@ public class OpenAiChatParser implements WireParser {
                 ? fromStream(response.body())
                 : fromJson(Json.parse(response.body()));
         return new ParsedExchange("openai", model != null ? model : answer.model(), streamed, messages, tools,
-                answer.output(), answer.finishReason(), answer.usage(), errorMessage(response, answer.error()));
+                answer.output(), answer.finishReason(), answer.usage(), WireParser.errorMessage(response, answer.error()));
     }
 
     private record Answer(ChatMessage output, String finishReason, Usage usage, String model, String error) {
@@ -190,16 +190,5 @@ public class OpenAiChatParser implements WireParser {
         }
         return new Usage(integer(usage.path("prompt_tokens")), integer(usage.path("completion_tokens")),
                 integer(usage.path("prompt_tokens_details").path("cached_tokens")), null);
-    }
-
-    /** The proxy's error (unreachable, broken stream), else the provider's message, else the HTTP status. */
-    private static String errorMessage(Exchange.Response response, String providerError) {
-        if (response.error() != null) {
-            return response.error();
-        }
-        if (providerError != null) {
-            return providerError;
-        }
-        return response.status() >= 400 ? "HTTP " + response.status() : null;
     }
 }
