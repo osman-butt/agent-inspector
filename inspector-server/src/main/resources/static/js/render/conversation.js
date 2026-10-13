@@ -1,10 +1,9 @@
 import {escapeHtml, highlightJson, tryParseJson} from '../util.js';
 
 /** Tool call id -> tool name, so a result can say which tool it answers. */
-function toolNames(parsed) {
+export function toolNames(messages) {
     const names = new Map();
-    const messages = parsed.output ? [...parsed.messages, parsed.output] : parsed.messages;
-    for (const message of messages) {
+    for (const message of messages.filter(Boolean)) {
         for (const part of message.parts) {
             if (part.type === 'tool_call') {
                 names.set(part.id, part.name);
@@ -47,7 +46,7 @@ function renderPart(part, names) {
     }
 }
 
-function renderMessage(message, names, extraClass = '') {
+export function renderMessage(message, names, extraClass = '') {
     const parts = message.parts.length
         ? message.parts.map(part => renderPart(part, names)).join('')
         : '<div class="muted">(empty)</div>';
@@ -81,9 +80,22 @@ function renderTools(tools) {
         </details>`;
 }
 
+/** Messages already sent in earlier round-trips of the session are folded away, so the new ones stand out. */
+function renderSent(messages, newFrom, names) {
+    if (!newFrom) {
+        return messages.map(message => renderMessage(message, names)).join('');
+    }
+    return `
+        <details class="resent">
+            <summary>↺ ${newFrom} message${newFrom === 1 ? '' : 's'} re-sent from earlier round-trips</summary>
+            ${messages.slice(0, newFrom).map(message => renderMessage(message, names)).join('')}
+        </details>
+        ${messages.slice(newFrom).map(message => renderMessage(message, names, 'new')).join('')}`;
+}
+
 export function renderConversation(exchange) {
     const parsed = exchange.parsed;
-    const names = toolNames(parsed);
+    const names = toolNames([...parsed.messages, parsed.output]);
     const answer = parsed.output
         ? renderMessage(parsed.output, names, 'answer')
         : parsed.error
@@ -93,7 +105,7 @@ export function renderConversation(exchange) {
         ${renderTools(parsed.tools)}
         <div class="section">
             <h3>Sent to the model (${parsed.messages.length} messages)</h3>
-            ${parsed.messages.map(message => renderMessage(message, names)).join('')}
+            ${renderSent(parsed.messages, exchange.session?.newFrom ?? 0, names)}
         </div>
         <div class="section">
             <h3>Model answer${parsed.finishReason ? ` · <span class="finish">${escapeHtml(parsed.finishReason)}</span>` : ''}</h3>

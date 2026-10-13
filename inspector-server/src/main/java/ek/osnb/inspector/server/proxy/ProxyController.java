@@ -41,6 +41,9 @@ public class ProxyController {
     private static final Set<String> SKIPPED_RESPONSE_HEADERS = Set.of(
             "connection", "content-length", "keep-alive", "transfer-encoding", "te", "trailer", "upgrade");
 
+    /** Headers meant for the inspector itself: recorded, never forwarded. */
+    public static final String SESSION_HEADER = "x-inspector-session";
+
     private static final Set<String> SECRET_HEADERS = Set.of(
             "authorization", "proxy-authorization", "x-api-key", "api-key", "x-goog-api-key");
 
@@ -81,6 +84,10 @@ public class ProxyController {
         Map<String, String> requestHeaders = new LinkedHashMap<>();
         for (String name : Collections.list(request.getHeaderNames())) {
             if (SKIPPED_REQUEST_HEADERS.contains(name.toLowerCase())) {
+                continue;
+            }
+            if (name.equalsIgnoreCase(SESSION_HEADER)) {
+                requestHeaders.put(SESSION_HEADER, request.getHeader(name));
                 continue;
             }
             for (String value : Collections.list(request.getHeaders(name))) {

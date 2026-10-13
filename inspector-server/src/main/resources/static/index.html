@@ -15,10 +15,16 @@
     <button id="clear" type="button">Clear</button>
 </header>
 <main class="layout">
-    <nav class="list" id="list" aria-label="Captured exchanges"></nav>
+    <aside class="sidebar">
+        <div class="list-tabs" role="tablist">
+            <button type="button" role="tab" class="tab active" data-view="sessions">Sessions</button>
+            <button type="button" role="tab" class="tab" data-view="calls">Calls</button>
+        </div>
+        <nav class="list" id="list" aria-label="Captured traffic"></nav>
+    </aside>
     <section class="detail" id="detail">
         <div class="empty">
-            <p>No exchange selected.</p>
+            <p>Nothing selected.</p>
             <p class="muted">Point an app's base-url at <code>http://localhost:7070/proxy/&lt;route&gt;</code>,
                 e.g. <code>/proxy/dmr</code>, <code>/proxy/openai</code> or <code>/proxy/anthropic</code>.</p>
         </div>

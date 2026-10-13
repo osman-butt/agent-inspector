@@ -9,12 +9,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /** Exchanges built from recorded wire traffic under {@code src/test/resources/wire}. */
-final class Fixtures {
+public final class Fixtures {
 
     private Fixtures() {
     }
 
-    static String read(String name) {
+    public static String read(String name) {
         try (InputStream in = Fixtures.class.getResourceAsStream("/wire/" + name)) {
             if (in == null) {
                 throw new IllegalArgumentException("No fixture " + name);
@@ -25,12 +25,16 @@ final class Fixtures {
         }
     }
 
-    static Exchange exchange(String path, String requestBody, int status, String responseBody) {
+    public static Exchange exchange(String path, String requestBody, int status, String responseBody) {
         return pending(path, requestBody)
                 .complete(new Exchange.Response(status, Map.of(), responseBody, 100, null));
     }
 
-    static Exchange pending(String path, String requestBody) {
-        return Exchange.start("test", new Exchange.Request("POST", "http://upstream" + path, path, Map.of(), requestBody));
+    public static Exchange pending(String path, String requestBody) {
+        return pending("test", path, requestBody, Map.of());
+    }
+
+    public static Exchange pending(String route, String path, String requestBody, Map<String, String> headers) {
+        return Exchange.start(route, new Exchange.Request("POST", "http://upstream" + path, path, headers, requestBody));
     }
 }

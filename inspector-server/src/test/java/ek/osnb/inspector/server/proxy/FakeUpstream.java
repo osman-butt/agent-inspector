@@ -1,5 +1,6 @@
 package ek.osnb.inspector.server.proxy;
 
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
@@ -12,6 +13,9 @@ import java.nio.charset.StandardCharsets;
 class FakeUpstream {
 
     static final String STREAM = "data: one\n\ndata: two\n\ndata: [DONE]\n\n";
+
+    /** Headers of the last request received, as the upstream saw them. */
+    static volatile Headers lastHeaders = new Headers();
 
     private final HttpServer server;
 
@@ -36,6 +40,7 @@ class FakeUpstream {
     }
 
     private static void echo(HttpExchange exchange) throws IOException {
+        lastHeaders = exchange.getRequestHeaders();
         String echo = "method=" + exchange.getRequestMethod()
                 + "\npath=" + exchange.getRequestURI().getPath()
                 + "\nquery=" + exchange.getRequestURI().getQuery()

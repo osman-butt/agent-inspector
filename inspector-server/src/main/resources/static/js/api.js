@@ -11,3 +11,7 @@ export const listExchanges = () => request('api/exchanges');
 export const getExchange = id => request(`api/exchanges/${encodeURIComponent(id)}`);
 
 export const clearExchanges = () => request('api/exchanges', {method: 'DELETE'});
+
+export const listSessions = () => request('api/sessions');
+
+export const getSession = id => request(`api/sessions/${encodeURIComponent(id)}`);

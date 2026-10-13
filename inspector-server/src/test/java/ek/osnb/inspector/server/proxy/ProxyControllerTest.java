@@ -74,6 +74,19 @@ class ProxyControllerTest {
     }
 
     @Test
+    void recordsButDoesNotForwardTheSessionHeader() throws Exception {
+        client.send(HttpRequest.newBuilder(proxy("/fake/echo"))
+                        .header("X-Inspector-Session", "my-run")
+                        .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        Exchange exchange = store.findAll().getFirst();
+        assertThat(exchange.request().headers()).containsEntry("x-inspector-session", "my-run");
+        assertThat(FakeUpstream.lastHeaders.containsKey("X-inspector-session")).isFalse();
+    }
+
+    @Test
     void passesStreamedResponsesThrough() throws Exception {
         HttpResponse<String> response = client.send(HttpRequest.newBuilder(proxy("/fake/stream")).build(),
                 HttpResponse.BodyHandlers.ofString());

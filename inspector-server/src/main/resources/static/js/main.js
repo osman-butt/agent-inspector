@@ -1,7 +1,8 @@
-import {clearExchanges, getExchange, listExchanges} from './api.js';
+import {clearExchanges, getExchange, getSession, listExchanges, listSessions} from './api.js';
 import {renderConversation} from './render/conversation.js';
 import {renderList} from './render/list.js';
 import {renderRequest, renderResponse} from './render/raw.js';
+import {renderSessionDetail, renderSessionList} from './render/sessions.js';
 import {escapeHtml, formatDuration, formatTokens, statusClass} from './util.js';
 
 const TABS = {
@@ -11,8 +12,11 @@ const TABS = {
 };
 
 const state = {
+    view: 'sessions',       // what the sidebar lists: sessions or individual calls
+    sessions: [],
     exchanges: [],
-    selectedId: null,
+    selected: null,         // {kind: 'session' | 'exchange', id}
+    backToSession: null,    // set when a round-trip was opened from a session timeline
     tab: 'conversation',
 };
 
@@ -22,34 +26,53 @@ const countEl = document.getElementById('count');
 const liveEl = document.getElementById('live');
 const emptyDetail = detailEl.innerHTML;
 
+const selectedId = kind => state.selected?.kind === kind ? state.selected.id : null;
+
 function renderAll() {
-    countEl.textContent = `${state.exchanges.length} captured`;
-    renderList(listEl, state.exchanges, state.selectedId);
+    const count = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    countEl.textContent = `${count(state.sessions.length, 'session')} · ${count(state.exchanges.length, 'call')}`;
+    if (state.view === 'sessions') {
+        renderSessionList(listEl, state.sessions, selectedId('session'));
+    } else {
+        renderList(listEl, state.exchanges, selectedId('exchange'));
+    }
+    document.querySelectorAll('.list-tabs .tab').forEach(tab =>
+        tab.classList.toggle('active', tab.dataset.view === state.view));
 }
 
-async function refreshList() {
-    state.exchanges = await listExchanges();
+async function refreshLists() {
+    [state.sessions, state.exchanges] = await Promise.all([listSessions(), listExchanges()]);
     renderAll();
 }
 
 async function showDetail() {
-    if (!state.selectedId) {
+    if (!state.selected) {
         detailEl.innerHTML = emptyDetail;
-        return;
+    } else if (state.selected.kind === 'session') {
+        detailEl.innerHTML = renderSessionDetail(await getSession(state.selected.id));
+    } else {
+        detailEl.innerHTML = renderExchange(await getExchange(state.selected.id));
     }
-    const exchange = await getExchange(state.selectedId);
+}
+
+function renderExchange(exchange) {
     const response = exchange.response;
     const parsed = exchange.parsed;
     const tabs = Object.entries(TABS).filter(([, tab]) => tab.available(exchange));
     const tab = tabs.some(([key]) => key === state.tab) ? state.tab : tabs[0][0];
     const chip = (text, className = '') => text ? `<span class="badge ${className}">${escapeHtml(text)}</span>` : '';
-    detailEl.innerHTML = `
+    const back = state.backToSession
+        ? `<button type="button" class="back" data-session-id="${escapeHtml(state.backToSession)}">← Back to session</button>`
+        : '';
+    return `
+        ${back}
         <div class="detail-head">
             <h2>${escapeHtml(parsed?.model ?? `${exchange.request.method} ${exchange.request.path || '/'}`)}</h2>
             <div class="url">${escapeHtml(exchange.request.method)} ${escapeHtml(exchange.request.url)}</div>
             <div class="chips">
                 ${chip(exchange.route)}
                 ${chip(parsed?.provider)}
+                ${chip(exchange.session ? `round-trip ${exchange.session.turn}` : '')}
                 ${chip(response ? String(response.status) : 'pending…', statusClass(response?.status, parsed?.error ?? response?.error))}
                 ${chip(response ? formatDuration(response.durationMs) : '')}
                 ${chip(parsed?.streamed ? 'streamed' : '')}
@@ -67,17 +90,20 @@ async function showDetail() {
         <div>${TABS[tab].render(exchange)}</div>`;
 }
 
-/** Adds a new exchange at the top, or updates one in place when its response arrives. */
-function upsert(summary) {
-    const index = state.exchanges.findIndex(exchange => exchange.id === summary.id);
-    if (index === -1) {
-        state.exchanges.unshift(summary);
-    } else {
-        state.exchanges[index] = summary;
-    }
+function select(kind, id, backToSession = null) {
+    state.selected = {kind, id};
+    state.backToSession = backToSession;
     renderAll();
-    if (summary.id === state.selectedId) {
-        showDetail();
+    showDetail();
+}
+
+/** Adds an item at the top, or replaces it in place when it changes. */
+function upsert(items, item) {
+    const index = items.findIndex(existing => existing.id === item.id);
+    if (index === -1) {
+        items.unshift(item);
+    } else {
+        items[index] = item;
     }
 }
 
@@ -86,16 +112,33 @@ function connect() {
     source.addEventListener('open', () => {
         liveEl.classList.add('on');
         liveEl.textContent = 'live';
-        refreshList(); // catch up on anything missed while disconnected
+        refreshLists(); // catch up on anything missed while disconnected
     });
     source.addEventListener('error', () => {
         liveEl.classList.remove('on');
         liveEl.textContent = 'reconnecting…';
     });
-    source.addEventListener('exchange', event => upsert(JSON.parse(event.data)));
+    source.addEventListener('exchange', event => {
+        const exchange = JSON.parse(event.data);
+        upsert(state.exchanges, exchange);
+        renderAll();
+        if (selectedId('exchange') === exchange.id) {
+            showDetail();
+        }
+    });
+    source.addEventListener('session', event => {
+        const session = JSON.parse(event.data);
+        upsert(state.sessions, session);
+        renderAll();
+        if (selectedId('session') === session.id) {
+            showDetail();
+        }
+    });
     source.addEventListener('cleared', () => {
+        state.sessions = [];
         state.exchanges = [];
-        state.selectedId = null;
+        state.selected = null;
+        state.backToSession = null;
         renderAll();
         showDetail();
     });
@@ -103,19 +146,30 @@ function connect() {
 
 listEl.addEventListener('click', event => {
     const row = event.target.closest('.row');
-    if (!row) {
-        return;
+    if (row) {
+        select(row.dataset.kind, row.dataset.id);
     }
-    state.selectedId = row.dataset.id;
-    renderAll();
-    showDetail();
+});
+
+document.querySelector('.list-tabs').addEventListener('click', event => {
+    const tab = event.target.closest('[data-view]');
+    if (tab) {
+        state.view = tab.dataset.view;
+        renderAll();
+    }
 });
 
 detailEl.addEventListener('click', event => {
     const tab = event.target.closest('.tab');
+    const turn = event.target.closest('.turn-open');
+    const back = event.target.closest('.back');
     if (tab) {
         state.tab = tab.dataset.tab;
         showDetail();
+    } else if (turn) {
+        select('exchange', turn.dataset.exchangeId, state.selected.id);
+    } else if (back) {
+        select('session', back.dataset.sessionId);
     }
 });
 

@@ -18,7 +18,7 @@ export function renderList(container, exchanges, selectedId) {
         return;
     }
     container.innerHTML = exchanges.map(exchange => `
-        <button type="button" class="row ${exchange.id === selectedId ? 'selected' : ''}" data-id="${escapeHtml(exchange.id)}">
+        <button type="button" class="row ${exchange.id === selectedId ? 'selected' : ''}" data-kind="exchange" data-id="${escapeHtml(exchange.id)}">
             <div class="line">
                 <span class="badge">${escapeHtml(exchange.route)}</span>
                 ${title(exchange)}

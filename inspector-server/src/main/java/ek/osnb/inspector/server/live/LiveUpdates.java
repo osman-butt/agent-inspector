@@ -3,6 +3,8 @@ package ek.osnb.inspector.server.live;
 import ek.osnb.inspector.server.api.ExchangeSummary;
 import ek.osnb.inspector.server.capture.ExchangeStore.ExchangeSaved;
 import ek.osnb.inspector.server.capture.ExchangeStore.StoreCleared;
+import ek.osnb.inspector.server.session.SessionTracker.SessionUpdated;
+import ek.osnb.inspector.server.session.SessionViews;
 import ek.osnb.inspector.server.wire.WireParsers;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.MediaType;
@@ -16,16 +18,19 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Pushes store changes to every open UI over server-sent events: an {@code exchange} event
- * with the summary of each new or completed exchange, and a {@code cleared} event.
+ * with the summary of each new or completed exchange, a {@code session} event with the
+ * summary of the session it belongs to, and a {@code cleared} event.
  */
 @RestController
 public class LiveUpdates {
 
     private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
     private final WireParsers parsers;
+    private final SessionViews sessions;
 
-    public LiveUpdates(WireParsers parsers) {
+    public LiveUpdates(WireParsers parsers, SessionViews sessions) {
         this.parsers = parsers;
+        this.sessions = sessions;
     }
 
     @GetMapping(path = "/api/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -43,6 +48,12 @@ public class LiveUpdates {
     void onSaved(ExchangeSaved saved) {
         ExchangeSummary summary = ExchangeSummary.from(saved.exchange(), parsers.parse(saved.exchange()).orElse(null));
         broadcast(SseEmitter.event().name("exchange").data(summary));
+    }
+
+    @EventListener
+    void onSessionUpdated(SessionUpdated updated) {
+        sessions.summary(updated.sessionId())
+                .ifPresent(summary -> broadcast(SseEmitter.event().name("session").data(summary)));
     }
 
     @EventListener
