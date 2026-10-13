@@ -11,7 +11,9 @@ import java.util.List;
  * One row in the exchange list. Status and duration are {@code null} while the call is
  * running; the model fields are {@code null} when the wire format isn't known.
  *
- * @param toolCalls names of the tools the model asked for in its answer
+ * @param toolCalls     names of the tools the model asked for in its answer
+ * @param requestBytes  size of the stored request body in UTF-8
+ * @param responseBytes size of the stored response body in UTF-8, {@code null} while running
  */
 public record ExchangeSummary(
         String id,
@@ -27,7 +29,9 @@ public record ExchangeSummary(
         boolean streamed,
         Integer inputTokens,
         Integer outputTokens,
-        List<String> toolCalls) {
+        List<String> toolCalls,
+        long requestBytes,
+        Long responseBytes) {
 
     public static ExchangeSummary from(Exchange exchange, ParsedExchange parsed) {
         Exchange.Response response = exchange.response();
@@ -50,6 +54,30 @@ public record ExchangeSummary(
                 parsed != null && parsed.streamed(),
                 usage == null ? null : usage.inputTokens(),
                 usage == null ? null : usage.outputTokens(),
-                toolCalls);
+                toolCalls,
+                utf8Length(exchange.request().body()),
+                response == null ? null : utf8Length(response.body()));
+    }
+
+    /** Counts without copying the body, which can be megabytes. */
+    static long utf8Length(String text) {
+        if (text == null) {
+            return 0;
+        }
+        long bytes = 0;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c < 0x80) {
+                bytes += 1;
+            } else if (c < 0x800) {
+                bytes += 2;
+            } else if (Character.isHighSurrogate(c) && i + 1 < text.length() && Character.isLowSurrogate(text.charAt(i + 1))) {
+                bytes += 4;
+                i++;
+            } else {
+                bytes += 3;
+            }
+        }
+        return bytes;
     }
 }

@@ -3,6 +3,7 @@ import {renderConversation} from './render/conversation.js';
 import {renderList} from './render/list.js';
 import {renderRequest, renderResponse} from './render/raw.js';
 import {renderSessionDetail, renderSessionList} from './render/sessions.js';
+import {fillWire} from './render/wire.js';
 import {escapeHtml, formatDuration, formatTokens, statusClass} from './util.js';
 
 const TABS = {
@@ -28,6 +29,23 @@ const emptyDetail = detailEl.innerHTML;
 
 const selectedId = kind => state.selected?.kind === kind ? state.selected.id : null;
 
+/** Finished exchanges fetched for the JSON accordions in the session timeline. */
+const exchangeCache = new Map();
+
+async function loadExchange(id) {
+    if (exchangeCache.has(id)) {
+        return exchangeCache.get(id);
+    }
+    const exchange = await getExchange(id);
+    if (exchange.response) {
+        exchangeCache.set(id, exchange);
+    }
+    return exchange;
+}
+
+/** What is on screen, so a live re-render of the same item can restore open folds and scroll position. */
+let shown = null;
+
 function renderAll() {
     const count = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
     countEl.textContent = `${count(state.sessions.length, 'session')} · ${count(state.exchanges.length, 'call')}`;
@@ -46,13 +64,24 @@ async function refreshLists() {
 }
 
 async function showDetail() {
-    if (!state.selected) {
-        detailEl.innerHTML = emptyDetail;
-    } else if (state.selected.kind === 'session') {
-        detailEl.innerHTML = renderSessionDetail(await getSession(state.selected.id));
-    } else {
-        detailEl.innerHTML = renderExchange(await getExchange(state.selected.id));
+    let html = emptyDetail;
+    if (state.selected?.kind === 'session') {
+        html = renderSessionDetail(await getSession(state.selected.id));
+    } else if (state.selected) {
+        html = renderExchange(await getExchange(state.selected.id));
     }
+    const item = state.selected ? `${state.selected.kind}:${state.selected.id}:${state.tab}` : null;
+    const same = item === shown;
+    const open = same ? new Set([...detailEl.querySelectorAll('details[open][data-key]')].map(fold => fold.dataset.key)) : new Set();
+    const scroll = detailEl.scrollTop;
+    detailEl.innerHTML = html;
+    detailEl.querySelectorAll('details[data-key]').forEach(fold => {
+        if (open.has(fold.dataset.key)) {
+            fold.open = true;
+        }
+    });
+    detailEl.scrollTop = same ? scroll : 0;
+    shown = item;
 }
 
 function renderExchange(exchange) {
@@ -146,6 +175,7 @@ function connect() {
         }
     });
     source.addEventListener('cleared', () => {
+        exchangeCache.clear();
         state.sessions = [];
         state.exchanges = [];
         state.selected = null;
@@ -183,6 +213,14 @@ detailEl.addEventListener('click', event => {
         select('session', back.dataset.sessionId);
     }
 });
+
+// toggle doesn't bubble, so listen in the capture phase. Opening a timeline accordion loads its body.
+detailEl.addEventListener('toggle', async event => {
+    const fold = event.target;
+    if (fold.open && fold.matches('.wire-part') && !fold.dataset.loaded) {
+        fillWire(fold, await loadExchange(fold.dataset.exchangeId));
+    }
+}, true);
 
 document.getElementById('clear').addEventListener('click', () => clearExchanges());
 

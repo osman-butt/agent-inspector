@@ -45,7 +45,8 @@ class ExchangeControllerTest {
                         [
                           {"id": "%s", "route": "anthropic", "path": "/v1/messages", "status": null},
                           {"id": "%s", "route": "dmr", "method": "POST", "path": "/chat/completions",
-                           "status": 200, "durationMs": 420, "provider": "openai", "model": "ai/qwen3"}
+                           "status": 200, "durationMs": 420, "provider": "openai", "model": "ai/qwen3",
+                           "requestBytes": 20, "responseBytes": 19}
                         ]
                         """.formatted(pending.id(), finished.id()));
         assertThat(mvc.get().uri("/api/exchanges"))
@@ -83,6 +84,12 @@ class ExchangeControllerTest {
         assertThat(mvc.get().uri("/api/exchanges/{id}", toolCall.id()))
                 .bodyJson()
                 .extractingPath("$.parsed.output.raw.tool_calls[0].function.name").isEqualTo("weather");
+    }
+
+    @Test
+    void countsBodySizesInUtf8() {
+        assertThat(ExchangeSummary.utf8Length("aé€😀")).isEqualTo(1 + 2 + 3 + 4);
+        assertThat(ExchangeSummary.utf8Length(null)).isZero();
     }
 
     @Test

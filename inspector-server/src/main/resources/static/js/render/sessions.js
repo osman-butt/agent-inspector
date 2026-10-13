@@ -1,5 +1,6 @@
 import {escapeHtml, formatDuration, formatTime, formatTokens, statusClass} from '../util.js';
-import {renderMessage, toolNames} from './conversation.js';
+import {renderAnswer, renderMessage, toolNames} from './conversation.js';
+import {renderWire} from './wire.js';
 
 function plural(count, word) {
     return `${count} ${word}${count === 1 ? '' : 's'}`;
@@ -35,8 +36,9 @@ export function renderSessionList(container, sessions, selectedId) {
 
 function renderTurn(turn, index, names, executions) {
     const exchange = turn.exchange;
+    const options = {names, executions};
     const answer = turn.output
-        ? renderMessage(turn.output, names, 'answer', executions)
+        ? renderAnswer(turn.output, {...options, streamed: exchange.streamed, key: `${exchange.id}:answer`})
         : turn.error
             ? `<div class="box error"><pre>${escapeHtml(turn.error)}</pre></div>`
             : '<p class="muted">Waiting for the model…</p>';
@@ -50,8 +52,11 @@ function renderTurn(turn, index, names, executions) {
                 ${exchange.inputTokens != null ? `<span class="badge">${formatTokens(exchange.inputTokens, exchange.outputTokens)}</span>` : ''}
                 ${turn.finishReason ? `<span class="badge">${escapeHtml(turn.finishReason)}</span>` : ''}
             </div>
+            ${renderWire(exchange.id, null, exchange)}
             ${turn.resent ? `<div class="resent-note muted">↺ ${plural(turn.resent, 'earlier message')} re-sent</div>` : ''}
-            ${turn.newMessages.map(message => renderMessage(message, names, turn.resent ? 'new' : '', executions)).join('')}
+            ${turn.newMessages.map((message, i) => renderMessage(message, {
+                ...options, extraClass: turn.resent ? 'new' : '', key: `${exchange.id}:msg:${turn.resent + i}`,
+            })).join('')}
             ${answer}
         </li>`;
 }
@@ -116,7 +121,7 @@ function renderChatClientCall(call) {
                 ${call.parentId ? `<span class="badge">inside call ${escapeHtml(call.parentId)}</span>` : ''}
                 ${call.error ? `<span class="badge status-bad">${escapeHtml(call.error)}</span>` : ''}
             </div>
-            <details class="app-prompt">
+            <details class="app-prompt" data-key="${escapeHtml(call.id)}:prompt">
                 <summary>Prompt as the app wrote it (${plural(call.messages.length, 'message')})</summary>
                 ${call.messages.map(message => renderPlainMessage(message)).join('')}
             </details>
