@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agent Inspector</title>
+    <link rel="stylesheet" href="css/inspector.css">
+</head>
+<body>
+<header class="topbar">
+    <h1>Agent Inspector</h1>
+    <span class="muted" id="count"></span>
+    <span class="spacer"></span>
+    <button id="refresh" type="button">Refresh</button>
+</header>
+<main class="layout">
+    <nav class="list" id="list" aria-label="Captured exchanges"></nav>
+    <section class="detail" id="detail">
+        <div class="empty">
+            <p>No exchange selected.</p>
+            <p class="muted">Point an app's base-url at <code>http://localhost:7070/proxy/&lt;route&gt;</code>,
+                e.g. <code>/proxy/dmr</code>, <code>/proxy/openai</code> or <code>/proxy/anthropic</code>.</p>
+        </div>
+    </section>
+</main>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
