@@ -20,7 +20,10 @@ public class RouteController {
     /** What the starter checks for, so another service on the same port is never mistaken for the inspector. */
     public static final String SIGNATURE = "agent-inspector";
 
-    public record RouteRequest(String route, URI upstream) {
+    /**
+     * @param app the application registering the route, so its ChatClient reports can be matched to its traffic
+     */
+    public record RouteRequest(String route, URI upstream, String app) {
     }
 
     private final RouteRegistry routes;
@@ -42,7 +45,7 @@ public class RouteController {
     @PostMapping("/routes")
     public Map<String, String> register(@RequestBody RouteRequest request) {
         try {
-            routes.register(request.route(), request.upstream());
+            routes.register(request.route(), request.upstream(), request.app());
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }

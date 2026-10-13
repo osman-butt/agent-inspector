@@ -2,6 +2,7 @@ package ek.osnb.inspector.server.api;
 
 import ek.osnb.inspector.server.capture.Exchange;
 import ek.osnb.inspector.server.capture.ExchangeStore;
+import ek.osnb.inspector.server.proxy.RouteRegistry;
 import ek.osnb.inspector.server.session.SessionTracker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
+import java.net.URI;
+import java.time.Instant;
 import java.util.Map;
 
 import static ek.osnb.inspector.server.wire.Fixtures.pending;
@@ -28,6 +31,9 @@ class SessionControllerTest {
 
     @Autowired
     SessionTracker tracker;
+
+    @Autowired
+    RouteRegistry routes;
 
     String sessionId;
 
@@ -99,6 +105,35 @@ class SessionControllerTest {
         assertThat(mvc.get().uri("/api/exchanges/{id}", firstRoundTrip))
                 .bodyJson()
                 .extractingPath("$.toolExecutions.giiqHefFwpjJ8nG4xulRxj0Nf8mfkWxi.app").isEqualTo("inspector-sample");
+    }
+
+    @Test
+    void roundTripsAreLinkedToTheChatClientCallRunningInTheirApp() {
+        routes.register("sample-openai", URI.create("http://localhost:12434/engines/v1"), "sample");
+        Exchange first = save(pending("sample-openai", "/chat/completions", read("openai/tool-call.request.json"), Map.of()),
+                read("openai/tool-call.response.json"));
+        save(pending("sample-openai", "/chat/completions", read("openai/tool-result.request.json"), Map.of()),
+                read("openai/tool-result.response.json"));
+        String session = tracker.placement(first.id()).orElseThrow().sessionId();
+
+        assertThat(mvc.post().uri("/api/chat-client-calls").contentType("application/json").content("""
+                {"id": "call-1", "app": "sample", "startedAt": "%s", "durationMs": 60000, "stream": false,
+                 "messages": [{"role": "user", "text": "What is the weather in Copenhagen?"}],
+                 "advisors": [{"name": "MessageChatMemoryAdvisor", "order": -2147482648, "durationMs": 1200, "messages": []},
+                              {"name": "ChatModelCallAdvisor", "order": 2147483647, "durationMs": 1190, "messages": []}],
+                 "answer": "Windy, 1°C."}
+                """.formatted(Instant.now().minusSeconds(5)))).hasStatus(202);
+
+        assertThat(mvc.get().uri("/api/sessions/{id}", session))
+                .bodyJson()
+                .isLenientlyEqualTo("""
+                        {"turns": [{"chatClientCallId": "call-1"}, {"chatClientCallId": "call-1"}],
+                         "chatClientCalls": [{"id": "call-1", "advisors": [{"name": "MessageChatMemoryAdvisor"}, {"name": "ChatModelCallAdvisor"}]}]}
+                        """);
+        // the dmr route was not registered by an app, so its session has no ChatClient call
+        assertThat(mvc.get().uri("/api/sessions/{id}", sessionId))
+                .bodyJson()
+                .extractingPath("$.chatClientCalls").asArray().isEmpty();
     }
 
     @Test

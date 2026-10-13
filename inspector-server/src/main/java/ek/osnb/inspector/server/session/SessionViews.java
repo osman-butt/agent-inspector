@@ -3,6 +3,9 @@ package ek.osnb.inspector.server.session;
 import ek.osnb.inspector.server.api.ExchangeSummary;
 import ek.osnb.inspector.server.capture.Exchange;
 import ek.osnb.inspector.server.capture.ExchangeStore;
+import ek.osnb.inspector.server.chatclient.ChatClientCall;
+import ek.osnb.inspector.server.chatclient.ChatClientCallStore;
+import ek.osnb.inspector.server.proxy.RouteRegistry;
 import ek.osnb.inspector.server.tools.ToolExecutionStore;
 import ek.osnb.inspector.server.wire.ChatMessage;
 import ek.osnb.inspector.server.wire.ParsedExchange;
@@ -12,7 +15,9 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /** Builds session summaries and timelines from the stored exchanges. */
@@ -23,13 +28,17 @@ public class SessionViews {
     private final ExchangeStore store;
     private final WireParsers parsers;
     private final ToolExecutionStore toolExecutions;
+    private final ChatClientCallStore chatClientCalls;
+    private final RouteRegistry routes;
 
     public SessionViews(SessionTracker tracker, ExchangeStore store, WireParsers parsers,
-                        ToolExecutionStore toolExecutions) {
+                        ToolExecutionStore toolExecutions, ChatClientCallStore chatClientCalls, RouteRegistry routes) {
         this.tracker = tracker;
         this.store = store;
         this.parsers = parsers;
         this.toolExecutions = toolExecutions;
+        this.chatClientCalls = chatClientCalls;
+        this.routes = routes;
     }
 
     private record Round(Exchange exchange, ParsedExchange parsed) {
@@ -51,7 +60,10 @@ public class SessionViews {
             return Optional.empty();
         }
         List<SessionDetail.Turn> turns = new ArrayList<>();
+        Map<String, ChatClientCall> calls = new LinkedHashMap<>();
         for (Round round : rounds) {
+            Optional<ChatClientCall> call = chatClientCall(round.exchange());
+            call.ifPresent(found -> calls.putIfAbsent(found.id(), found));
             int resent = tracker.placement(round.exchange().id()).map(SessionTracker.Placement::newFrom).orElse(0);
             List<ChatMessage> messages = round.parsed().messages();
             turns.add(new SessionDetail.Turn(
@@ -60,10 +72,21 @@ public class SessionViews {
                     messages.subList(Math.min(resent, messages.size()), messages.size()),
                     round.parsed().output(),
                     round.parsed().finishReason(),
-                    round.parsed().error()));
+                    round.parsed().error(),
+                    call.map(ChatClientCall::id).orElse(null)));
         }
         List<String> toolCallIds = rounds.stream().flatMap(round -> round.parsed().toolCallIds().stream()).toList();
-        return Optional.of(new SessionDetail(summarize(sessionId, rounds), turns, toolExecutions.forToolCalls(toolCallIds)));
+        return Optional.of(new SessionDetail(summarize(sessionId, rounds), turns,
+                toolExecutions.forToolCalls(toolCallIds), List.copyOf(calls.values())));
+    }
+
+    /**
+     * Model requests carry no trace of the ChatClient call that made them, so they are matched
+     * by app and time: the call of the app that owns the route which was running when the
+     * request went out.
+     */
+    private Optional<ChatClientCall> chatClientCall(Exchange exchange) {
+        return routes.app(exchange.route()).flatMap(app -> chatClientCalls.runningAt(app, exchange.startedAt()));
     }
 
     private List<Round> rounds(String sessionId) {
@@ -101,8 +124,13 @@ public class SessionViews {
                 pending, failed);
     }
 
+    /**
+     * The question that started the session: the last user message of its first request. With
+     * chat memory the earlier turns of a conversation come first, so the first user message
+     * would name an older question.
+     */
     private static String title(ParsedExchange parsed) {
-        return parsed.messages().stream()
+        return parsed.messages().reversed().stream()
                 .filter(message -> "user".equals(message.role()))
                 .flatMap(message -> message.parts().stream())
                 .filter(Part.Text.class::isInstance)

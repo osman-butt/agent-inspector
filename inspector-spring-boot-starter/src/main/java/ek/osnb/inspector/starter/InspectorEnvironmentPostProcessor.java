@@ -107,7 +107,7 @@ public class InspectorEnvironmentPostProcessor implements EnvironmentPostProcess
             return; // already proxied by hand, or a setup the proxy would break
         }
         String route = routeName(app + "-" + provider.name());
-        if (!inspector.registerRoute(route, upstream)) {
+        if (!inspector.registerRoute(route, upstream, app)) {
             log.warn("Agent Inspector at " + url + " did not accept route " + route + ", " + provider.name() + " goes direct");
             return;
         }

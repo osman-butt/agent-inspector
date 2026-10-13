@@ -140,6 +140,11 @@ function connect() {
             showDetail();
         }
     });
+    source.addEventListener('chat-client-call', () => {
+        if (state.selected?.kind === 'session') {
+            showDetail(); // the report arrives when the call ends, after its round-trips
+        }
+    });
     source.addEventListener('cleared', () => {
         state.sessions = [];
         state.exchanges = [];

@@ -138,6 +138,7 @@ button:hover { border-color: var(--accent); }
 }
 .row .model { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row .meta > span { white-space: nowrap; }
+.row .meta > .badge { max-width: 150px; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; }
 .row .tools { color: var(--role-tool); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
 .badge {
@@ -275,6 +276,24 @@ details.resent > summary { color: var(--muted); font-size: 12.5px; margin-bottom
 details.resent .message { opacity: .75; }
 .message.new { border-style: solid; }
 .message.new > .message-role::after { content: " · new"; color: var(--muted); font-weight: 400; text-transform: none; }
+
+/* Spring AI layer */
+.layer::before { background: var(--role-system); border-radius: 2px; }
+.layer-title { font-weight: 600; color: var(--role-system); }
+.app-prompt > summary { color: var(--muted); font-size: 12.5px; margin-bottom: 8px; }
+.advisors { list-style: none; margin: 8px 0 0; padding: 0; }
+.advisor {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--role-system);
+    border-radius: 8px;
+    background: var(--panel);
+    padding: 6px 12px;
+    margin-bottom: 6px;
+}
+.advisor.model { border-left-color: var(--role-assistant); }
+.advisor-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.advisor-added { font-size: 12px; margin: 6px 0; }
+.advisor .message { margin: 6px 0 0; }
 
 @media (max-width: 760px) {
     .layout { grid-template-columns: 1fr; grid-template-rows: 40% 60%; }

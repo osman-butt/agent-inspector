@@ -16,7 +16,7 @@ class InspectorConnection {
 
     private static final String SIGNATURE = "\"name\":\"agent-inspector\"";
 
-    private record RouteRequest(String route, String upstream) {
+    private record RouteRequest(String route, String upstream, String app) {
     }
 
     private final String url;
@@ -42,9 +42,9 @@ class InspectorConnection {
         }
     }
 
-    boolean registerRoute(String route, String upstream) {
+    boolean registerRoute(String route, String upstream, String app) {
         try {
-            String body = json.writeValueAsString(new RouteRequest(route, upstream));
+            String body = json.writeValueAsString(new RouteRequest(route, upstream, app));
             HttpResponse<Void> response = client.send(
                     HttpRequest.newBuilder(URI.create(url + "/api/routes"))
                             .timeout(Duration.ofSeconds(1))

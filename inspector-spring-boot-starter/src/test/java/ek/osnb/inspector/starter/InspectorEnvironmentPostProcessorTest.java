@@ -32,7 +32,7 @@ class InspectorEnvironmentPostProcessorTest {
                     .isEqualTo(inspector.url() + "/proxy/my-sample-openai");
             assertThat(environment.getProperty("agent.inspector.active")).isEqualTo("true");
             assertThat(inspector.posted).containsExactly(
-                    "/api/routes {\"route\":\"my-sample-openai\",\"upstream\":\"http://localhost:12434/engines/v1\"}");
+                    "/api/routes {\"route\":\"my-sample-openai\",\"upstream\":\"http://localhost:12434/engines/v1\",\"app\":\"My Sample\"}");
         }
     }
 
@@ -44,8 +44,8 @@ class InspectorEnvironmentPostProcessorTest {
             assertThat(environment.getProperty("spring.ai.openai.base-url")).isEqualTo(inspector.url() + "/proxy/app-openai");
             assertThat(environment.getProperty("spring.ai.anthropic.base-url")).isEqualTo(inspector.url() + "/proxy/app-anthropic");
             assertThat(inspector.posted).containsExactly(
-                    "/api/routes {\"route\":\"app-openai\",\"upstream\":\"https://api.openai.com/v1\"}",
-                    "/api/routes {\"route\":\"app-anthropic\",\"upstream\":\"https://api.anthropic.com\"}");
+                    "/api/routes {\"route\":\"app-openai\",\"upstream\":\"https://api.openai.com/v1\",\"app\":\"app\"}",
+                    "/api/routes {\"route\":\"app-anthropic\",\"upstream\":\"https://api.anthropic.com\",\"app\":\"app\"}");
         }
     }
 

@@ -56,6 +56,74 @@ function renderTurn(turn, index, names, executions) {
         </li>`;
 }
 
+/** Spring AI's last advisor, the one that sends the prompt to the model (named "call" or "stream"). */
+const MODEL_ADVISOR_ORDER = 2147483647;
+
+const messageKey = message => `${message.role}\u0000${message.text}`;
+
+/** Messages in {@code after} that are not in {@code before}, counting duplicates. */
+function added(after, before) {
+    const remaining = new Map();
+    before.forEach(message => remaining.set(messageKey(message), (remaining.get(messageKey(message)) ?? 0) + 1));
+    return after.filter(message => {
+        const count = remaining.get(messageKey(message)) ?? 0;
+        remaining.set(messageKey(message), count - 1);
+        return count <= 0;
+    });
+}
+
+function renderPlainMessage(message, extraClass = '') {
+    return `<div class="message role-${escapeHtml(message.role)} ${extraClass}">
+                <div class="message-role">${escapeHtml(message.role)}</div>
+                <div class="part-text">${escapeHtml(message.text)}</div>
+            </div>`;
+}
+
+/**
+ * One hop through the advisor chain. What changed since the previous hop was added by the
+ * nearest advisor before it in the chain (lower order): an advisor that loops, like the
+ * tool-calling one, calls the rest of the chain again with more messages.
+ */
+function renderAdvisorStep(step, index, steps, call, modelCalls) {
+    const before = index === 0 ? call.messages : steps[index - 1].messages;
+    const newMessages = added(step.messages, before);
+    const by = steps.slice(0, index).reverse().find(other => other.order < step.order)?.name;
+    const isModel = step.order === MODEL_ADVISOR_ORDER;
+    const label = isModel ? `${escapeHtml(step.name)} → model (round-trip ${modelCalls.get(step)})` : escapeHtml(step.name);
+    return `
+        <li class="advisor ${isModel ? 'model' : ''}">
+            <div class="advisor-head">
+                <b>${label}</b>
+                <span class="muted">order ${step.order} · ${formatDuration(step.durationMs)} · receives ${plural(step.messages.length, 'message')}</span>
+            </div>
+            ${newMessages.length ? `
+                <div class="advisor-added muted">+ ${plural(newMessages.length, 'message')} added${by ? ` by ${escapeHtml(by)}` : ''}</div>
+                ${newMessages.map(message => renderPlainMessage(message, 'new')).join('')}` : ''}
+        </li>`;
+}
+
+/** The Spring AI side of a ChatClient call: the prompt as the app wrote it and the advisor chain. */
+function renderChatClientCall(call) {
+    let round = 0;
+    const modelCalls = new Map(call.advisors.filter(step => step.order === MODEL_ADVISOR_ORDER).map(step => [step, ++round]));
+    return `
+        <li class="turn layer">
+            <div class="turn-head">
+                <span class="layer-title">Spring AI · ChatClient call</span>
+                <span class="badge">${escapeHtml(call.app)}</span>
+                <span class="badge">${formatDuration(call.durationMs)}</span>
+                ${call.stream ? '<span class="badge">stream</span>' : ''}
+                ${call.parentId ? `<span class="badge">inside call ${escapeHtml(call.parentId)}</span>` : ''}
+                ${call.error ? `<span class="badge status-bad">${escapeHtml(call.error)}</span>` : ''}
+            </div>
+            <details class="app-prompt">
+                <summary>Prompt as the app wrote it (${plural(call.messages.length, 'message')})</summary>
+                ${call.messages.map(message => renderPlainMessage(message)).join('')}
+            </details>
+            <ol class="advisors">${call.advisors.map((step, index) => renderAdvisorStep(step, index, call.advisors, call, modelCalls)).join('')}</ol>
+        </li>`;
+}
+
 export function renderSessionDetail(session) {
     const {summary, turns} = session;
     const names = toolNames(turns.flatMap(turn => [...turn.newMessages, turn.output]));
@@ -73,5 +141,16 @@ export function renderSessionDetail(session) {
                 ${summary.failed ? '<span class="badge status-bad">failed</span>' : ''}
             </div>
         </div>
-        <ol class="timeline">${turns.map((turn, index) => renderTurn(turn, index, names, session.toolExecutions ?? {})).join('')}</ol>`;
+        <ol class="timeline">${renderTimeline(session, names)}</ol>`;
+}
+
+/** Round-trips in order, each ChatClient call's panel placed before the first round-trip it made. */
+function renderTimeline(session, names) {
+    const calls = new Map((session.chatClientCalls ?? []).map(call => [call.id, call]));
+    let previousCall = null;
+    return session.turns.map((turn, index) => {
+        const call = turn.chatClientCallId !== previousCall ? calls.get(turn.chatClientCallId) : null;
+        previousCall = turn.chatClientCallId;
+        return (call ? renderChatClientCall(call) : '') + renderTurn(turn, index, names, session.toolExecutions ?? {});
+    }).join('');
 }
