@@ -15,7 +15,7 @@ public record ExchangeSummary(
         Long durationMs,
         String error) {
 
-    static ExchangeSummary from(Exchange exchange) {
+    public static ExchangeSummary from(Exchange exchange) {
         Exchange.Response response = exchange.response();
         return new ExchangeSummary(
                 exchange.id(),

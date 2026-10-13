@@ -1,6 +1,7 @@
 package ek.osnb.inspector.server.capture;
 
 import ek.osnb.inspector.server.InspectorProperties;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -11,14 +12,22 @@ import java.util.Optional;
 
 /**
  * Keeps the most recent exchanges in memory. Saving an exchange with a known id
- * replaces it, so a pending exchange is completed in place.
+ * replaces it, so a pending exchange is completed in place. Every change is published
+ * as an application event, so the UI can follow along live.
  */
 @Component
 public class ExchangeStore {
 
-    private final LinkedHashMap<String, Exchange> exchanges;
+    public record ExchangeSaved(Exchange exchange) {
+    }
 
-    public ExchangeStore(InspectorProperties properties) {
+    public record StoreCleared() {
+    }
+
+    private final LinkedHashMap<String, Exchange> exchanges;
+    private final ApplicationEventPublisher events;
+
+    public ExchangeStore(InspectorProperties properties, ApplicationEventPublisher events) {
         int capacity = properties.maxExchanges();
         this.exchanges = new LinkedHashMap<>() {
             @Override
@@ -26,10 +35,14 @@ public class ExchangeStore {
                 return size() > capacity;
             }
         };
+        this.events = events;
     }
 
-    public synchronized void save(Exchange exchange) {
-        exchanges.put(exchange.id(), exchange);
+    public void save(Exchange exchange) {
+        synchronized (this) {
+            exchanges.put(exchange.id(), exchange);
+        }
+        events.publishEvent(new ExchangeSaved(exchange));
     }
 
     public synchronized Optional<Exchange> findById(String id) {
@@ -41,7 +54,10 @@ public class ExchangeStore {
         return new ArrayList<>(exchanges.sequencedValues().reversed());
     }
 
-    public synchronized void clear() {
-        exchanges.clear();
+    public void clear() {
+        synchronized (this) {
+            exchanges.clear();
+        }
+        events.publishEvent(new StoreCleared());
     }
 }

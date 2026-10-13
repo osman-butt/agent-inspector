@@ -1,4 +1,4 @@
-import {getExchange, listExchanges} from './api.js';
+import {clearExchanges, getExchange, listExchanges} from './api.js';
 import {renderList} from './render/list.js';
 import {renderRequest, renderResponse} from './render/raw.js';
 import {escapeHtml, formatDuration, statusClass} from './util.js';
@@ -17,15 +17,22 @@ const state = {
 const listEl = document.getElementById('list');
 const detailEl = document.getElementById('detail');
 const countEl = document.getElementById('count');
+const liveEl = document.getElementById('live');
+const emptyDetail = detailEl.innerHTML;
 
-async function refreshList() {
-    state.exchanges = await listExchanges();
+function renderAll() {
     countEl.textContent = `${state.exchanges.length} captured`;
     renderList(listEl, state.exchanges, state.selectedId);
 }
 
+async function refreshList() {
+    state.exchanges = await listExchanges();
+    renderAll();
+}
+
 async function showDetail() {
     if (!state.selectedId) {
+        detailEl.innerHTML = emptyDetail;
         return;
     }
     const exchange = await getExchange(state.selectedId);
@@ -49,13 +56,47 @@ async function showDetail() {
         <div>${TABS[state.tab].render(exchange)}</div>`;
 }
 
+/** Adds a new exchange at the top, or updates one in place when its response arrives. */
+function upsert(summary) {
+    const index = state.exchanges.findIndex(exchange => exchange.id === summary.id);
+    if (index === -1) {
+        state.exchanges.unshift(summary);
+    } else {
+        state.exchanges[index] = summary;
+    }
+    renderAll();
+    if (summary.id === state.selectedId) {
+        showDetail();
+    }
+}
+
+function connect() {
+    const source = new EventSource('api/stream');
+    source.addEventListener('open', () => {
+        liveEl.classList.add('on');
+        liveEl.textContent = 'live';
+        refreshList(); // catch up on anything missed while disconnected
+    });
+    source.addEventListener('error', () => {
+        liveEl.classList.remove('on');
+        liveEl.textContent = 'reconnecting…';
+    });
+    source.addEventListener('exchange', event => upsert(JSON.parse(event.data)));
+    source.addEventListener('cleared', () => {
+        state.exchanges = [];
+        state.selectedId = null;
+        renderAll();
+        showDetail();
+    });
+}
+
 listEl.addEventListener('click', event => {
     const row = event.target.closest('.row');
     if (!row) {
         return;
     }
     state.selectedId = row.dataset.id;
-    renderList(listEl, state.exchanges, state.selectedId);
+    renderAll();
     showDetail();
 });
 
@@ -67,6 +108,6 @@ detailEl.addEventListener('click', event => {
     }
 });
 
-document.getElementById('refresh').addEventListener('click', () => refreshList().then(showDetail));
+document.getElementById('clear').addEventListener('click', () => clearExchanges());
 
-refreshList();
+connect();
