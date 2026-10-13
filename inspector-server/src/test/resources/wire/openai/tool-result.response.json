@@ -1,0 +1,36 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "In Copenhagen, the current weather is windy with a temperature of 1°C. The time there is 16:44 (4:44 PM)."
+      }
+    }
+  ],
+  "created": 1791902668,
+  "model": "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+  "system_fingerprint": "b1-ac4cdde",
+  "object": "chat.completion",
+  "usage": {
+    "completion_tokens": 34,
+    "prompt_tokens": 418,
+    "total_tokens": 452,
+    "prompt_tokens_details": {
+      "cached_tokens": 350
+    }
+  },
+  "id": "chatcmpl-2wcRVFQhEx8cn4wU8vxvhxmdQtLqdN9p",
+  "timings": {
+    "cache_n": 350,
+    "prompt_n": 68,
+    "prompt_ms": 148.772,
+    "prompt_per_token_ms": 2.1878235294117645,
+    "prompt_per_second": 457.07525609657733,
+    "predicted_n": 34,
+    "predicted_ms": 470.119,
+    "predicted_per_token_ms": 13.827029411764707,
+    "predicted_per_second": 72.32211418810982
+  }
+}

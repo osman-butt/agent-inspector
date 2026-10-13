@@ -1,0 +1,54 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "type": "function",
+            "function": {
+              "name": "weather",
+              "arguments": "{\"city\": \"Copenhagen\"}"
+            },
+            "id": "dkkzu6IBP78L993owMdFsb55uQkLTmyg"
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "currentTime",
+              "arguments": "{\"zone\": \"Europe/Copenhagen\"}"
+            },
+            "id": "giiqHefFwpjJ8nG4xulRxj0Nf8mfkWxi"
+          }
+        ]
+      }
+    }
+  ],
+  "created": 1791902667,
+  "model": "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+  "system_fingerprint": "b1-ac4cdde",
+  "object": "chat.completion",
+  "usage": {
+    "completion_tokens": 41,
+    "prompt_tokens": 310,
+    "total_tokens": 351,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "id": "chatcmpl-3UImCKRCISN5mO1OtEOnbcQlzDU9gnZb",
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 310,
+    "prompt_ms": 456.918,
+    "prompt_per_token_ms": 1.4739290322580645,
+    "prompt_per_second": 678.4587168813661,
+    "predicted_n": 41,
+    "predicted_ms": 523.582,
+    "predicted_per_token_ms": 12.77029268292683,
+    "predicted_per_second": 78.30674087344484
+  }
+}

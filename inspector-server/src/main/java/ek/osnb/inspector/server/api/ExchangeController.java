@@ -1,7 +1,7 @@
 package ek.osnb.inspector.server.api;
 
-import ek.osnb.inspector.server.capture.Exchange;
 import ek.osnb.inspector.server.capture.ExchangeStore;
+import ek.osnb.inspector.server.wire.WireParsers;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,9 +18,11 @@ import java.util.List;
 public class ExchangeController {
 
     private final ExchangeStore store;
+    private final WireParsers parsers;
 
-    public ExchangeController(ExchangeStore store) {
+    public ExchangeController(ExchangeStore store, WireParsers parsers) {
         this.store = store;
+        this.parsers = parsers;
     }
 
     /** Newest first. */
@@ -30,8 +32,9 @@ public class ExchangeController {
     }
 
     @GetMapping("/{id}")
-    public Exchange get(@PathVariable String id) {
+    public ExchangeDetail get(@PathVariable String id) {
         return store.findById(id)
+                .map(exchange -> ExchangeDetail.of(exchange, parsers.parse(exchange).orElse(null)))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No exchange " + id));
     }
 

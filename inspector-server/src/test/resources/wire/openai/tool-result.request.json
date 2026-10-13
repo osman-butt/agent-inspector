@@ -1,0 +1,91 @@
+{
+  "messages": [
+    {
+      "content": "You are a helpful assistant. Use the tools when they help. Answer briefly.",
+      "role": "system"
+    },
+    {
+      "content": "What is the weather in Copenhagen and what time is it there?",
+      "role": "user"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "dkkzu6IBP78L993owMdFsb55uQkLTmyg",
+          "function": {
+            "arguments": "{\"city\": \"Copenhagen\"}",
+            "name": "weather"
+          },
+          "type": "function"
+        },
+        {
+          "id": "giiqHefFwpjJ8nG4xulRxj0Nf8mfkWxi",
+          "function": {
+            "arguments": "{\"zone\": \"Europe/Copenhagen\"}",
+            "name": "currentTime"
+          },
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "{\"city\":\"Copenhagen\",\"temperatureCelsius\":1,\"conditions\":\"windy\"}",
+      "role": "tool",
+      "tool_call_id": "dkkzu6IBP78L993owMdFsb55uQkLTmyg"
+    },
+    {
+      "content": "\"2026-10-13T16:44:27.368251+02:00\"",
+      "role": "tool",
+      "tool_call_id": "giiqHefFwpjJ8nG4xulRxj0Nf8mfkWxi"
+    }
+  ],
+  "model": "ai/qwen3:4b-instruct-2507-q4_K_M",
+  "tools": [
+    {
+      "function": {
+        "name": "currentTime",
+        "description": "Current date and time in a time zone",
+        "parameters": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "zone": {
+              "type": "string",
+              "description": "IANA time zone id, e.g. Europe/Copenhagen"
+            }
+          },
+          "required": [
+            "zone"
+          ],
+          "additionalProperties": false
+        },
+        "strict": false
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "name": "weather",
+        "description": "Current weather for a city",
+        "parameters": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string",
+              "description": "City name"
+            }
+          },
+          "required": [
+            "city"
+          ],
+          "additionalProperties": false
+        },
+        "strict": false
+      },
+      "type": "function"
+    }
+  ]
+}

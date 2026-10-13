@@ -60,7 +60,24 @@ class ExchangeControllerTest {
                 .bodyJson()
                 .isLenientlyEqualTo("""
                         {"request": {"body": "{\\"model\\":\\"ai/qwen3\\"}"},
-                         "response": {"body": "{\\"id\\":\\"chatcmpl-1\\"}"}}
+                         "response": {"body": "{\\"id\\":\\"chatcmpl-1\\"}"},
+                         "parsed": {"provider": "openai", "model": "ai/qwen3"}}
+                        """);
+    }
+
+    @Test
+    void partsCarryTheirType() {
+        Exchange toolCall = Exchange.start("dmr", request("/chat/completions")).complete(new Exchange.Response(200, Map.of(), """
+                {"choices": [{"finish_reason": "tool_calls", "message": {"role": "assistant", "tool_calls": [
+                  {"id": "call_1", "type": "function", "function": {"name": "weather", "arguments": "{}"}}]}}]}
+                """, 300, null));
+        store.save(toolCall);
+
+        assertThat(mvc.get().uri("/api/exchanges/{id}", toolCall.id()))
+                .bodyJson()
+                .isLenientlyEqualTo("""
+                        {"parsed": {"output": {"role": "assistant", "parts": [
+                          {"type": "tool_call", "id": "call_1", "name": "weather", "arguments": "{}"}]}}}
                         """);
     }
 
