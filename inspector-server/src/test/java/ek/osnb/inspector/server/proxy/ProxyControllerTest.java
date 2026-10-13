@@ -98,6 +98,41 @@ class ProxyControllerTest {
     }
 
     @Test
+    void pingIdentifiesTheInspector() throws Exception {
+        HttpResponse<String> response = client.send(HttpRequest.newBuilder(api("/ping")).build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.body()).contains("\"name\":\"agent-inspector\"");
+    }
+
+    @Test
+    void forwardsRoutesRegisteredAtRuntime() throws Exception {
+        HttpResponse<String> registered = client.send(HttpRequest.newBuilder(api("/routes"))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(
+                                "{\"route\": \"my-app-openai\", \"upstream\": \"" + upstream.baseUrl() + "\"}"))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(registered.statusCode()).isEqualTo(200);
+
+        HttpResponse<String> response = client.send(HttpRequest.newBuilder(proxy("/my-app-openai/echo")).build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(response.body()).contains("path=/base/echo");
+        assertThat(store.findAll().getFirst().route()).isEqualTo("my-app-openai");
+    }
+
+    @Test
+    void rejectsInvalidRouteNames() throws Exception {
+        HttpResponse<String> response = client.send(HttpRequest.newBuilder(api("/routes"))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString("{\"route\": \"../x\", \"upstream\": \"http://x\"}"))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(400);
+    }
+
+    @Test
     void unknownRouteIsNotFound() throws Exception {
         HttpResponse<String> response = client.send(HttpRequest.newBuilder(proxy("/nope/chat")).build(),
                 HttpResponse.BodyHandlers.ofString());
@@ -119,5 +154,9 @@ class ProxyControllerTest {
 
     private URI proxy(String path) {
         return URI.create("http://127.0.0.1:" + port + "/proxy" + path);
+    }
+
+    private URI api(String path) {
+        return URI.create("http://127.0.0.1:" + port + "/api" + path);
     }
 }

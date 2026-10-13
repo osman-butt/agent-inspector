@@ -1,0 +1,2 @@
+org.springframework.boot.EnvironmentPostProcessor=\
+ek.osnb.inspector.starter.InspectorEnvironmentPostProcessor

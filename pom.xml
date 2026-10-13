@@ -17,6 +17,7 @@
 
     <modules>
         <module>inspector-server</module>
+        <module>inspector-spring-boot-starter</module>
         <module>inspector-sample</module>
     </modules>
 
@@ -27,6 +28,11 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>ek.osnb</groupId>
+                <artifactId>agent-inspector-spring-boot-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>

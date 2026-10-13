@@ -6,6 +6,7 @@ import ek.osnb.inspector.server.capture.ExchangeStore.StoreCleared;
 import ek.osnb.inspector.server.session.SessionTracker.SessionUpdated;
 import ek.osnb.inspector.server.session.SessionViews;
 import ek.osnb.inspector.server.wire.WireParsers;
+import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -59,6 +60,13 @@ public class LiveUpdates {
     @EventListener
     void onCleared(StoreCleared cleared) {
         broadcast(SseEmitter.event().name("cleared").data(""));
+    }
+
+    /** Open streams never finish on their own, and graceful shutdown would wait for them. */
+    @EventListener
+    void onShutdown(ContextClosedEvent closed) {
+        emitters.forEach(SseEmitter::complete);
+        emitters.clear();
     }
 
     private void broadcast(SseEmitter.SseEventBuilder event) {

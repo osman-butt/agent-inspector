@@ -53,10 +53,12 @@ public class ProxyController {
             .build();
 
     private final InspectorProperties properties;
+    private final RouteRegistry routes;
     private final ExchangeStore store;
 
-    public ProxyController(InspectorProperties properties, ExchangeStore store) {
+    public ProxyController(InspectorProperties properties, RouteRegistry routes, ExchangeStore store) {
         this.properties = properties;
+        this.routes = routes;
         this.store = store;
     }
 
@@ -64,11 +66,8 @@ public class ProxyController {
     public void proxy(@PathVariable String route, HttpServletRequest request, HttpServletResponse response)
             throws IOException {
 
-        URI upstream = properties.routes().get(route);
-        if (upstream == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                    "Unknown route '" + route + "'. Configure agent.inspector.routes." + route);
-        }
+        URI upstream = routes.upstream(route).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "Unknown route '" + route + "'. Configure agent.inspector.routes." + route));
 
         String path = request.getRequestURI().substring((request.getContextPath() + "/proxy/" + route).length());
         String query = request.getQueryString() == null ? "" : "?" + request.getQueryString();
