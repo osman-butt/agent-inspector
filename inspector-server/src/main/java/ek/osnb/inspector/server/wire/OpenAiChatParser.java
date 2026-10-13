@@ -8,6 +8,8 @@ import tools.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import static ek.osnb.inspector.server.wire.Json.integer;
 import static ek.osnb.inspector.server.wire.Json.text;
@@ -41,26 +43,92 @@ public class OpenAiChatParser implements WireParser {
                     function.path("parameters")));
         }
 
-        ChatMessage output = null;
-        String finishReason = null;
-        Usage usage = null;
-        String error = null;
         String model = text(request.path("model"));
         Exchange.Response response = exchange.response();
-        if (response != null && !streamed) {
-            JsonNode body = Json.parse(response.body());
-            JsonNode choice = body.path("choices").path(0);
-            if (!choice.isMissingNode()) {
-                output = message(choice.path("message"));
-                finishReason = text(choice.path("finish_reason"));
-            }
-            usage = usage(body.path("usage"));
-            error = errorMessage(response, body);
-            model = model != null ? model : text(body.path("model"));
-        } else if (response != null) {
-            error = response.error();
+        if (response == null) {
+            return new ParsedExchange("openai", model, streamed, messages, tools, null, null, null, null);
         }
-        return new ParsedExchange("openai", model, streamed, messages, tools, output, finishReason, usage, error);
+        // A failed streaming call answers with a plain JSON error, not a stream.
+        Answer answer = streamed && response.status() < 400
+                ? fromStream(response.body())
+                : fromJson(Json.parse(response.body()));
+        return new ParsedExchange("openai", model != null ? model : answer.model(), streamed, messages, tools,
+                answer.output(), answer.finishReason(), answer.usage(), errorMessage(response, answer.error()));
+    }
+
+    private record Answer(ChatMessage output, String finishReason, Usage usage, String model, String error) {
+    }
+
+    private static Answer fromJson(JsonNode body) {
+        JsonNode choice = body.path("choices").path(0);
+        return new Answer(
+                choice.isMissingNode() ? null : message(choice.path("message")),
+                text(choice.path("finish_reason")),
+                usage(body.path("usage")),
+                text(body.path("model")),
+                text(body.path("error").path("message")));
+    }
+
+    /**
+     * Rebuilds the answer from {@code chat.completion.chunk} events: text and reasoning
+     * arrive as fragments, and each tool call's arguments are split over many chunks
+     * (matched by {@code index}). Usage comes in a last chunk without choices.
+     */
+    private static Answer fromStream(String body) {
+        StringBuilder text = new StringBuilder();
+        StringBuilder reasoning = new StringBuilder();
+        Map<Integer, StreamedCall> calls = new TreeMap<>();
+        String finishReason = null;
+        Usage usage = null;
+        String model = null;
+        String error = null;
+        for (SseFrames.Frame frame : SseFrames.parse(body)) {
+            if (frame.data().equals("[DONE]")) {
+                continue;
+            }
+            JsonNode chunk = Json.parse(frame.data());
+            model = model != null ? model : text(chunk.path("model"));
+            error = error != null ? error : text(chunk.path("error").path("message"));
+            if (chunk.hasNonNull("usage")) {
+                usage = usage(chunk.path("usage"));
+            }
+            JsonNode choice = chunk.path("choices").path(0);
+            JsonNode delta = choice.path("delta");
+            appendText(text, delta.path("content"));
+            appendText(reasoning, delta.path("reasoning_content"));
+            int position = 0;
+            for (JsonNode call : delta.path("tool_calls")) {
+                Integer index = integer(call.path("index"));
+                StreamedCall built = calls.computeIfAbsent(index != null ? index : position, i -> new StreamedCall());
+                built.id = built.id != null ? built.id : text(call.path("id"));
+                built.name = built.name != null ? built.name : text(call.path("function").path("name"));
+                appendText(built.arguments, call.path("function").path("arguments"));
+                position++;
+            }
+            finishReason = text(choice.path("finish_reason")) != null ? text(choice.path("finish_reason")) : finishReason;
+        }
+
+        List<Part> parts = new ArrayList<>();
+        if (!reasoning.isEmpty()) {
+            parts.add(new Part.Thinking(reasoning.toString()));
+        }
+        if (!text.isEmpty()) {
+            parts.add(new Part.Text(text.toString()));
+        }
+        calls.values().forEach(call -> parts.add(new Part.ToolCall(call.id, call.name, call.arguments.toString())));
+        return new Answer(new ChatMessage("assistant", parts), finishReason, usage, model, error);
+    }
+
+    private static final class StreamedCall {
+        String id;
+        String name;
+        final StringBuilder arguments = new StringBuilder();
+    }
+
+    private static void appendText(StringBuilder target, JsonNode fragment) {
+        if (fragment.isString()) {
+            target.append(fragment.stringValue());
+        }
     }
 
     static ChatMessage message(JsonNode message) {
@@ -124,14 +192,14 @@ public class OpenAiChatParser implements WireParser {
                 integer(usage.path("prompt_tokens_details").path("cached_tokens")), null);
     }
 
-    private static String errorMessage(Exchange.Response response, JsonNode body) {
+    /** The proxy's error (unreachable, broken stream), else the provider's message, else the HTTP status. */
+    private static String errorMessage(Exchange.Response response, String providerError) {
         if (response.error() != null) {
             return response.error();
         }
-        if (response.status() < 400) {
-            return null;
+        if (providerError != null) {
+            return providerError;
         }
-        String message = text(body.path("error").path("message"));
-        return message != null ? message : "HTTP " + response.status();
+        return response.status() >= 400 ? "HTTP " + response.status() : null;
     }
 }

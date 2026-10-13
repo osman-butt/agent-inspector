@@ -61,6 +61,59 @@ class OpenAiChatParserTest {
     }
 
     @Test
+    void reassemblesAStreamedToolCall() {
+        ParsedExchange parsed = parser.parse(exchange("/chat/completions",
+                read("openai/stream-tool-call.request.json"), 200, read("openai/stream-tool-call.response.sse")));
+
+        assertThat(parsed.streamed()).isTrue();
+        assertThat(parsed.messages()).extracting(ChatMessage::role).containsExactly("system", "user");
+        assertThat(parsed.output().parts()).containsExactly(
+                new Part.ToolCall("N62RNiGELvb7sJh3NuOCDAKi9tvHv81f", "weather", "{\"city\": \"Oslo\"}"));
+        assertThat(parsed.finishReason()).isEqualTo("tool_calls");
+        assertThat(parsed.usage()).isEqualTo(new Usage(304, 20, 292, null));
+    }
+
+    @Test
+    void reassemblesStreamedText() {
+        ParsedExchange parsed = parser.parse(exchange("/chat/completions",
+                read("openai/stream-tool-call.request.json"), 200, read("openai/stream-answer.response.sse")));
+
+        assertThat(parsed.output().parts())
+                .containsExactly(new Part.Text("The weather in Oslo is sunny with a temperature of -2°C."));
+        assertThat(parsed.finishReason()).isEqualTo("stop");
+        assertThat(parsed.usage()).isEqualTo(new Usage(353, 15, 323, null));
+    }
+
+    @Test
+    void joinsToolCallArgumentsSplitOverChunksPerIndex() {
+        String stream = """
+                data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"a","function":{"name":"weather","arguments":"{\\"ci"}}]}}]}
+
+                data: {"choices":[{"delta":{"tool_calls":[{"index":1,"id":"b","function":{"name":"currentTime","arguments":""}}]}}]}
+
+                data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"ty\\": \\"Oslo\\"}"}}]}}]}
+
+                data: {"choices":[{"delta":{"tool_calls":[{"index":1,"function":{"arguments":"{}"}}]},"finish_reason":"tool_calls"}]}
+
+                data: [DONE]
+
+                """;
+        ParsedExchange parsed = parser.parse(exchange("/chat/completions", "{\"stream\": true}", 200, stream));
+
+        assertThat(parsed.output().parts()).containsExactly(
+                new Part.ToolCall("a", "weather", "{\"city\": \"Oslo\"}"),
+                new Part.ToolCall("b", "currentTime", "{}"));
+    }
+
+    @Test
+    void failedStreamingCallReadsTheJsonError() {
+        ParsedExchange parsed = parser.parse(exchange("/chat/completions", "{\"stream\": true}", 429,
+                "{\"error\":{\"message\":\"Rate limit reached\"}}"));
+
+        assertThat(parsed.error()).isEqualTo("Rate limit reached");
+    }
+
+    @Test
     void pendingExchangeHasMessagesButNoOutput() {
         ParsedExchange parsed = parser.parse(pending("/chat/completions", read("openai/tool-call.request.json")));
 

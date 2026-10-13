@@ -1,0 +1,63 @@
+{
+  "messages": [
+    {
+      "content": "You are a helpful assistant. Use the tools when they help. Answer briefly.",
+      "role": "system"
+    },
+    {
+      "content": "How is the weather in Oslo?",
+      "role": "user"
+    }
+  ],
+  "model": "ai/qwen3:4b-instruct-2507-q4_K_M",
+  "stream_options": {
+    "include_usage": true
+  },
+  "tools": [
+    {
+      "function": {
+        "name": "currentTime",
+        "description": "Current date and time in a time zone",
+        "parameters": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "zone": {
+              "type": "string",
+              "description": "IANA time zone id, e.g. Europe/Copenhagen"
+            }
+          },
+          "required": [
+            "zone"
+          ],
+          "additionalProperties": false
+        },
+        "strict": false
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "name": "weather",
+        "description": "Current weather for a city",
+        "parameters": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string",
+              "description": "City name"
+            }
+          },
+          "required": [
+            "city"
+          ],
+          "additionalProperties": false
+        },
+        "strict": false
+      },
+      "type": "function"
+    }
+  ],
+  "stream": true
+}
