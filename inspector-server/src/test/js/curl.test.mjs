@@ -2,7 +2,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {isTruncated, toCurl} from '../../main/resources/static/js/curl.js';
+import {isTruncated, toCurl} from '../../main/resources/agent-inspector/static/js/curl.js';
 
 const exchange = (overrides = {}) => ({
     route: 'dmr',

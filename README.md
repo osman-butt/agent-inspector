@@ -72,9 +72,9 @@ curl http://localhost:7070/proxy/dmr/chat/completions -H 'Content-Type: applicat
   -d '{"model": "ai/qwen3:4b-instruct-2507-q4_K_M", "messages": [{"role": "user", "content": "Hi"}]}'
 ```
 
-Add your own routes in `inspector-server/src/main/resources/application.properties`
-(`agent.inspector.routes.<name>=<upstream base URL>`); the path after `/proxy/<name>` is appended
-to the upstream URL.
+Add your own routes when starting the inspector, e.g.
+`--agent.inspector.routes.ollama=http://localhost:11434/v1` (see [Inspector settings](#inspector-settings));
+the path after `/proxy/<name>` is appended to the upstream URL.
 
 ### Option 2: add the starter (Spring AI apps)
 
@@ -126,11 +126,15 @@ records it and doesn't forward it.
 
 ## Inspector settings
 
+Pass them as arguments (`./mvnw -pl inspector-server spring-boot:run -Dspring-boot.run.arguments=--server.port=7171`,
+or `java -jar inspector-server/target/agent-inspector-server-0.0.1-SNAPSHOT-exec.jar --server.port=7171`)
+or as environment variables (`SERVER_PORT=7171`).
+
 | Property | Default | |
 |---|---|---|
 | `server.port` | `7070` | |
 | `server.address` | `127.0.0.1` | local only: captured traffic contains prompts and tool results |
-| `agent.inspector.routes.<name>` | `openai`, `anthropic`, `dmr` | upstream base URL per proxy route |
+| `agent.inspector.routes.<name>` | `openai`, `anthropic`, `dmr` | upstream base URL per proxy route, added to the defaults |
 | `agent.inspector.max-exchanges` | `500` | round-trips kept in memory, oldest dropped first |
 | `agent.inspector.max-body-size` | `5MB` | longer bodies are stored truncated (but forwarded in full) |
 

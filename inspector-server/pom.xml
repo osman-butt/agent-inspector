@@ -26,9 +26,14 @@
 
     <build>
         <plugins>
+            <!-- The runnable jar gets the "exec" classifier, so the main jar stays a plain
+                 library that the starter can depend on to embed the inspector. -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <classifier>exec</classifier>
+                </configuration>
             </plugin>
         </plugins>
     </build>
