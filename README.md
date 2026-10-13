@@ -22,7 +22,7 @@ Install it once (`./mvnw install` in this repository), then add it to a Spring A
 <dependency>
     <groupId>ek.osnb</groupId>
     <artifactId>agent-inspector-spring-boot-starter</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -161,7 +161,7 @@ records it and doesn't forward it.
 
 For the standalone inspector. Pass them as arguments
 (`./mvnw -pl inspector-server spring-boot:run -Dspring-boot.run.arguments=--server.port=7171`,
-or `java -jar inspector-server/target/agent-inspector-server-0.0.1-SNAPSHOT-exec.jar --server.port=7171`)
+or `java -jar inspector-server/target/agent-inspector-server-0.1.0-SNAPSHOT-exec.jar --server.port=7171`)
 or as environment variables (`SERVER_PORT=7171`). An inspector started by the starter uses the
 defaults, on the port described above.
 

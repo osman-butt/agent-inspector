@@ -10,7 +10,8 @@
     </parent>
     <groupId>ek.osnb</groupId>
     <artifactId>agent-inspector-parent</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <!-- Override with -Drevision=1.2.3: releases take it from the git tag. -->
+    <version>${revision}</version>
     <packaging>pom</packaging>
     <name>agent-inspector</name>
     <description>See what your AI apps send to the model: requests, responses and tool calls</description>
@@ -22,6 +23,7 @@
     </modules>
 
     <properties>
+        <revision>0.1.0-SNAPSHOT</revision>
         <java.version>25</java.version>
         <spring-ai.version>2.0.1</spring-ai.version>
     </properties>
@@ -47,5 +49,37 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <build>
+        <plugins>
+            <!-- Writes the actual version into the POMs that get installed and published,
+                 so projects using them never see ${revision}. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.8.0</version>
+                <configuration>
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                    <updatePomFile>true</updatePomFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten-clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
