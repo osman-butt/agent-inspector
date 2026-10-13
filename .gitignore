@@ -4,6 +4,9 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Local notes ###
+notes/
+
 ### Secrets ###
 .env
 
