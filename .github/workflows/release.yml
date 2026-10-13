@@ -29,8 +29,8 @@ jobs:
           java-version: '25'
           cache: maven
           server-id: central
-          server-username: CENTRAL_USERNAME
-          server-password: CENTRAL_PASSWORD
+          server-username-env-var: CENTRAL_USERNAME
+          server-password-env-var: CENTRAL_PASSWORD
 
       - name: Test and publish ${{ steps.version.outputs.version }}
         run: ./mvnw -B deploy -Prelease -Drevision=${{ steps.version.outputs.version }}
