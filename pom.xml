@@ -124,7 +124,8 @@
     <profiles>
         <!-- Javadoc, signatures and the upload to Maven Central, for the GitHub workflows:
              ./mvnw deploy -Prelease. Signing reads the key from MAVEN_GPG_KEY and its passphrase
-             from MAVEN_GPG_PASSPHRASE; the upload logs in as server "central" in settings.xml. -->
+             from MAVEN_GPG_PASSPHRASE; the upload logs in as server "central-portal" in settings.xml.
+             Not "central": Maven 3.10 ties that id's credentials to repo.maven.apache.org. -->
         <profile>
             <id>release</id>
             <build>
@@ -171,7 +172,7 @@
                         <version>0.11.0</version>
                         <extensions>true</extensions>
                         <configuration>
-                            <publishingServerId>central</publishingServerId>
+                            <publishingServerId>central-portal</publishingServerId>
                             <autoPublish>true</autoPublish>
                             <waitUntil>published</waitUntil>
                             <excludeArtifacts>

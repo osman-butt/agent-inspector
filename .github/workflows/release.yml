@@ -28,7 +28,7 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
-          server-id: central
+          server-id: central-portal
           server-username-env-var: CENTRAL_USERNAME
           server-password-env-var: CENTRAL_PASSWORD
 
