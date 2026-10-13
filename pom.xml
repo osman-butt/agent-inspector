@@ -8,7 +8,7 @@
         <version>4.1.1</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>ek.osnb</groupId>
+    <groupId>io.github.osman-butt</groupId>
     <artifactId>agent-inspector-parent</artifactId>
     <!-- Override with -Drevision=1.2.3: releases take it from the git tag. -->
     <version>${revision}</version>
@@ -53,12 +53,12 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>ek.osnb</groupId>
+                <groupId>io.github.osman-butt</groupId>
                 <artifactId>agent-inspector-server</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>ek.osnb</groupId>
+                <groupId>io.github.osman-butt</groupId>
                 <artifactId>agent-inspector-spring-boot-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>

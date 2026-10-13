@@ -11,7 +11,7 @@ Model Runner.
 ```xml
 <dependencies>
     <dependency>
-        <groupId>ek.osnb</groupId>
+        <groupId>io.github.osman-butt</groupId>
         <artifactId>agent-inspector-spring-boot-starter</artifactId>
         <version>0.1.0</version>
     </dependency>

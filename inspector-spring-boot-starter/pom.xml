@@ -3,7 +3,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>ek.osnb</groupId>
+        <groupId>io.github.osman-butt</groupId>
         <artifactId>agent-inspector-parent</artifactId>
         <version>${revision}</version>
     </parent>
@@ -22,7 +22,7 @@
         </dependency>
         <!-- Started inside the app when no inspector is running. -->
         <dependency>
-            <groupId>ek.osnb</groupId>
+            <groupId>io.github.osman-butt</groupId>
             <artifactId>agent-inspector-server</artifactId>
         </dependency>
         <!-- Provided by the Spring AI app this starter is added to. -->
