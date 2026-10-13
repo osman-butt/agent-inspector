@@ -16,13 +16,15 @@ your app ──(base-url = http://localhost:7070/proxy/<route>)──► inspect
 
 ## Quick start: add the starter
 
-Install it once (`./mvnw install` in this repository), then add it to a Spring AI app:
+Add it to a Spring AI app. It is published to this repository's GitHub Packages, which needs
+a one-time setup in each project; see [Using it in other projects](#using-it-in-other-projects).
+(Or run `./mvnw install` here to use it on this machine only.)
 
 ```xml
 <dependency>
     <groupId>ek.osnb</groupId>
     <artifactId>agent-inspector-spring-boot-starter</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0</version>
 </dependency>
 ```
 
@@ -149,6 +151,69 @@ curl http://localhost:7070/proxy/dmr/chat/completions -H 'Content-Type: applicat
 Add your own routes when starting the inspector, e.g.
 `--agent.inspector.routes.ollama=http://localhost:11434/v1` (see [Inspector settings](#inspector-settings));
 the path after `/proxy/<name>` is appended to the upstream URL.
+
+## Using it in other projects
+
+The starter is published to the GitHub Packages of
+[osman-butt/agent-inspector-starter](https://github.com/osman-butt/agent-inspector-starter): releases
+(`0.1.0`, ...) from version tags, and `0.1.0-SNAPSHOT` from every push to `main`.
+
+GitHub Packages asks for a login even to read, so a project using the starter needs two things:
+
+1. The repository, in the project's `pom.xml`:
+
+   ```xml
+   <repositories>
+       <repository>
+           <id>github</id>
+           <url>https://maven.pkg.github.com/osman-butt/agent-inspector-starter</url>
+           <snapshots>
+               <enabled>true</enabled>
+           </snapshots>
+       </repository>
+   </repositories>
+   ```
+
+2. A login for it, in `~/.m2/settings.xml` on your machine. The `id` must match the repository's.
+   The token is a GitHub personal access token (classic) with the `read:packages` scope:
+
+   ```xml
+   <settings>
+       <servers>
+           <server>
+               <id>github</id>
+               <username>osman-butt</username>
+               <password>${env.GITHUB_PACKAGES_TOKEN}</password>
+           </server>
+       </servers>
+   </settings>
+   ```
+
+**In that project's GitHub Actions**, either:
+- on the package's page (*Package settings → Manage Actions access*), give the project's repository
+  read access. Then the workflow's own token is enough: `permissions: packages: read`,
+  `actions/setup-java` (its settings.xml uses server `github` by default), and
+  `env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}` on the Maven step;
+- or store a `read:packages` token as a secret and pass that as `GITHUB_TOKEN` instead.
+
+## Releasing
+
+The version is never edited by hand. The poms say `${revision}` (defined in the root `pom.xml`,
+currently `0.1.0-SNAPSHOT`), and the release workflow sets it from the tag:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The **Release** workflow then builds and tests, publishes `0.1.0`, and creates a GitHub Release with
+the runnable inspector jar. A published version can't be published again, so every release needs a
+new tag. After releasing, raise `<revision>` in the root `pom.xml` (e.g. to `0.2.0-SNAPSHOT`), so
+local builds and snapshots stay ahead of the last release.
+
+The **Build** workflow tests every push and pull request and, on `main`, publishes the snapshot.
+
+To build any version locally: `./mvnw -Drevision=1.2.3 package`.
 
 ## Sessions
 
