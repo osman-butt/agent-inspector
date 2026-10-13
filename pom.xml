@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"
+         child.project.url.inherit.append.path="false">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -17,26 +18,28 @@
     <description>See what your AI apps send to the model: requests, responses and tool calls</description>
     <url>https://github.com/osman-butt/agent-inspector-starter</url>
 
-    <scm>
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>osman-butt</id>
+            <name>osman-butt</name>
+            <url>https://github.com/osman-butt</url>
+        </developer>
+    </developers>
+
+    <scm child.scm.url.inherit.append.path="false"
+         child.scm.connection.inherit.append.path="false"
+         child.scm.developerConnection.inherit.append.path="false">
         <url>https://github.com/osman-butt/agent-inspector-starter</url>
         <connection>scm:git:https://github.com/osman-butt/agent-inspector-starter.git</connection>
         <developerConnection>scm:git:git@github.com:osman-butt/agent-inspector-starter.git</developerConnection>
     </scm>
-
-    <!-- GitHub Packages of this repository. The id matches the server in settings.xml that
-         actions/setup-java writes in CI, and the one consumers configure (see README). -->
-    <distributionManagement>
-        <repository>
-            <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/osman-butt/agent-inspector-starter</url>
-        </repository>
-        <snapshotRepository>
-            <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/osman-butt/agent-inspector-starter</url>
-        </snapshotRepository>
-    </distributionManagement>
 
     <modules>
         <module>inspector-server</module>
@@ -87,14 +90,15 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Writes the actual version into the POMs that get installed and published,
-                 so projects using them never see ${revision}. -->
+            <!-- The POMs that get installed and published are flattened: the actual version instead
+                 of ${revision}, explicit dependency versions instead of a parent, and the license,
+                 developers and scm that Maven Central requires spelled out in each. -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>flatten-maven-plugin</artifactId>
                 <version>1.8.0</version>
                 <configuration>
-                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                    <flattenMode>ossrh</flattenMode>
                     <updatePomFile>true</updatePomFile>
                 </configuration>
                 <executions>
@@ -116,5 +120,68 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Javadoc, signatures and the upload to Maven Central, for the GitHub workflows:
+             ./mvnw deploy -Prelease. Signing reads the key from MAVEN_GPG_KEY and its passphrase
+             from MAVEN_GPG_PASSPHRASE; the upload logs in as server "central" in settings.xml. -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <configuration>
+                            <doclint>none</doclint>
+                            <quiet>true</quiet>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.8</version>
+                        <configuration>
+                            <!-- Signs in Java (BouncyCastle), so no gpg installation is needed. -->
+                            <signer>bc</signer>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Snapshot versions go to Central's snapshot repository, releases are
+                         validated and published without anything to click. -->
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.11.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                            <waitUntil>published</waitUntil>
+                            <excludeArtifacts>
+                                <excludeArtifact>agent-inspector-sample</excludeArtifact>
+                            </excludeArtifacts>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>
