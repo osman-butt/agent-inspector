@@ -1,7 +1,5 @@
 name: Build
 
-# Tests every push and pull request. Pushes to main also publish the current snapshot
-# (the <revision> in pom.xml, e.g. 0.1.0-SNAPSHOT) to this repository's GitHub Packages.
 on:
   push:
     branches: [main]
@@ -15,17 +13,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 2026-07-17
 
-      # Also writes a settings.xml with server "github", logging in as GITHUB_ACTOR with GITHUB_TOKEN.
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1 2026-09-09
         with:
           distribution: temurin
           java-version: '25'
           cache: maven
 
-      # For the UI's own tests.
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 #v7.1.0 2026-10-08
         with:
           node-version: '24'
 
