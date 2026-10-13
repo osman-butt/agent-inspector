@@ -17,6 +17,7 @@
 
     <modules>
         <module>inspector-server</module>
+        <module>inspector-sample</module>
     </modules>
 
     <properties>
