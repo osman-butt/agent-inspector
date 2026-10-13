@@ -15,6 +15,28 @@
     <packaging>pom</packaging>
     <name>agent-inspector</name>
     <description>See what your AI apps send to the model: requests, responses and tool calls</description>
+    <url>https://github.com/osman-butt/agent-inspector-starter</url>
+
+    <scm>
+        <url>https://github.com/osman-butt/agent-inspector-starter</url>
+        <connection>scm:git:https://github.com/osman-butt/agent-inspector-starter.git</connection>
+        <developerConnection>scm:git:git@github.com:osman-butt/agent-inspector-starter.git</developerConnection>
+    </scm>
+
+    <!-- GitHub Packages of this repository. The id matches the server in settings.xml that
+         actions/setup-java writes in CI, and the one consumers configure (see README). -->
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/osman-butt/agent-inspector-starter</url>
+        </repository>
+        <snapshotRepository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/osman-butt/agent-inspector-starter</url>
+        </snapshotRepository>
+    </distributionManagement>
 
     <modules>
         <module>inspector-server</module>
@@ -52,6 +74,19 @@
 
     <build>
         <plugins>
+            <!-- Publishes sources jars, so IDEs in projects using the starter can show its code. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <!-- Writes the actual version into the POMs that get installed and published,
                  so projects using them never see ${revision}. -->
             <plugin>

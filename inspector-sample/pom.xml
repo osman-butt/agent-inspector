@@ -11,6 +11,11 @@
     <name>agent-inspector-sample</name>
     <description>A small Spring AI app with tools, for trying out the inspector</description>
 
+    <properties>
+        <!-- Only for trying the inspector out; not published. -->
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>

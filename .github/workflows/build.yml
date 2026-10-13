@@ -1,0 +1,42 @@
+name: Build
+
+# Tests every push and pull request. Pushes to main also publish the current snapshot
+# (the <revision> in pom.xml, e.g. 0.1.0-SNAPSHOT) to this repository's GitHub Packages.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Also writes a settings.xml with server "github", logging in as GITHUB_ACTOR with GITHUB_TOKEN.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # For the UI's own tests.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Build and test
+        run: ./mvnw -B verify
+
+      - name: Test the UI
+        run: node --test inspector-server/src/test/js/
+
+      - name: Publish snapshot
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: ./mvnw -B deploy -DskipTests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

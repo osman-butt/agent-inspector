@@ -1,0 +1,48 @@
+name: Release
+
+# Pushing a tag like v1.2.3 publishes version 1.2.3 to this repository's GitHub Packages and
+# creates a GitHub Release with the runnable inspector jar. The version comes from the tag only:
+# nothing in pom.xml has to be edited.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Version from tag
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME is not a version like v1.2.3"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Also writes a settings.xml with server "github", logging in as GITHUB_ACTOR with GITHUB_TOKEN.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Test and publish ${{ steps.version.outputs.version }}
+        run: ./mvnw -B deploy -Drevision=${{ steps.version.outputs.version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "inspector-server/target/agent-inspector-server-${{ steps.version.outputs.version }}-exec.jar" \
+            --title "$GITHUB_REF_NAME" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
