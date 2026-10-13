@@ -28,7 +28,9 @@ public class ExchangeController {
     /** Newest first. */
     @GetMapping
     public List<ExchangeSummary> list() {
-        return store.findAll().stream().map(ExchangeSummary::from).toList();
+        return store.findAll().stream()
+                .map(exchange -> ExchangeSummary.from(exchange, parsers.parse(exchange).orElse(null)))
+                .toList();
     }
 
     @GetMapping("/{id}")

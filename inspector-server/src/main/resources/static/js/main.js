@@ -1,17 +1,19 @@
 import {clearExchanges, getExchange, listExchanges} from './api.js';
+import {renderConversation} from './render/conversation.js';
 import {renderList} from './render/list.js';
 import {renderRequest, renderResponse} from './render/raw.js';
-import {escapeHtml, formatDuration, statusClass} from './util.js';
+import {escapeHtml, formatDuration, formatTokens, statusClass} from './util.js';
 
 const TABS = {
-    request: {label: 'Request', render: renderRequest},
-    response: {label: 'Response', render: renderResponse},
+    conversation: {label: 'Conversation', render: renderConversation, available: exchange => exchange.parsed != null},
+    request: {label: 'Request', render: renderRequest, available: () => true},
+    response: {label: 'Response', render: renderResponse, available: () => true},
 };
 
 const state = {
     exchanges: [],
     selectedId: null,
-    tab: 'request',
+    tab: 'conversation',
 };
 
 const listEl = document.getElementById('list');
@@ -37,23 +39,32 @@ async function showDetail() {
     }
     const exchange = await getExchange(state.selectedId);
     const response = exchange.response;
+    const parsed = exchange.parsed;
+    const tabs = Object.entries(TABS).filter(([, tab]) => tab.available(exchange));
+    const tab = tabs.some(([key]) => key === state.tab) ? state.tab : tabs[0][0];
+    const chip = (text, className = '') => text ? `<span class="badge ${className}">${escapeHtml(text)}</span>` : '';
     detailEl.innerHTML = `
         <div class="detail-head">
-            <h2>${escapeHtml(exchange.request.method)} ${escapeHtml(exchange.request.path || '/')}</h2>
-            <div class="url">${escapeHtml(exchange.request.url)}</div>
+            <h2>${escapeHtml(parsed?.model ?? `${exchange.request.method} ${exchange.request.path || '/'}`)}</h2>
+            <div class="url">${escapeHtml(exchange.request.method)} ${escapeHtml(exchange.request.url)}</div>
             <div class="chips">
-                <span class="badge">${escapeHtml(exchange.route)}</span>
-                <span class="badge ${statusClass(response?.status)}">${response?.status ?? 'pending…'}</span>
-                ${response ? `<span class="badge">${formatDuration(response.durationMs)}</span>` : ''}
+                ${chip(exchange.route)}
+                ${chip(parsed?.provider)}
+                ${chip(response ? String(response.status) : 'pending…', statusClass(response?.status, parsed?.error ?? response?.error))}
+                ${chip(response ? formatDuration(response.durationMs) : '')}
+                ${chip(parsed?.streamed ? 'streamed' : '')}
+                ${chip(formatTokens(parsed?.usage?.inputTokens, parsed?.usage?.outputTokens))}
+                ${chip(parsed?.usage?.cacheReadTokens ? `${parsed.usage.cacheReadTokens} cached` : '')}
+                ${chip(parsed?.finishReason)}
             </div>
         </div>
         <div class="tabs" role="tablist">
-            ${Object.entries(TABS).map(([key, tab]) => `
-                <button type="button" role="tab" class="tab ${key === state.tab ? 'active' : ''}" data-tab="${key}">
-                    ${tab.label}
+            ${tabs.map(([key, {label}]) => `
+                <button type="button" role="tab" class="tab ${key === tab ? 'active' : ''}" data-tab="${key}">
+                    ${label}
                 </button>`).join('')}
         </div>
-        <div>${TABS[state.tab].render(exchange)}</div>`;
+        <div>${TABS[tab].render(exchange)}</div>`;
 }
 
 /** Adds a new exchange at the top, or updates one in place when its response arrives. */

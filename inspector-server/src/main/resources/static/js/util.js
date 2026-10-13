@@ -70,9 +70,20 @@ export function formatTime(iso) {
     return new Date(iso).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'});
 }
 
-export function statusClass(status) {
-    if (status == null) {
+export function formatTokens(input, output) {
+    if (input == null && output == null) {
+        return '';
+    }
+    return `${input ?? '?'} → ${output ?? '?'} tok`;
+}
+
+/** A 200 can still carry an error, e.g. a stream that broke off halfway. */
+export function statusClass(status, error) {
+    if (status == null && !error) {
         return 'status-pending';
+    }
+    if (error && (status == null || status < 400)) {
+        return 'status-bad';
     }
     if (status < 300) {
         return 'status-ok';

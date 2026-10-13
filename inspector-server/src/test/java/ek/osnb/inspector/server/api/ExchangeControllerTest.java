@@ -45,7 +45,7 @@ class ExchangeControllerTest {
                         [
                           {"id": "%s", "route": "anthropic", "path": "/v1/messages", "status": null},
                           {"id": "%s", "route": "dmr", "method": "POST", "path": "/chat/completions",
-                           "status": 200, "durationMs": 420}
+                           "status": 200, "durationMs": 420, "provider": "openai", "model": "ai/qwen3"}
                         ]
                         """.formatted(pending.id(), finished.id()));
         assertThat(mvc.get().uri("/api/exchanges"))

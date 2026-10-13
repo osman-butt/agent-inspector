@@ -10,6 +10,10 @@
     --ok: #1f8a4c;
     --warn: #b7791f;
     --bad: #c53030;
+    --role-system: #8a63d2;
+    --role-user: #3b6fd8;
+    --role-assistant: #1f8a4c;
+    --role-tool: #c26a13;
     --j-key: #7a3e9d;
     --j-str: #1f7a45;
     --j-num: #b35c00;
@@ -32,6 +36,10 @@
         --ok: #4fc283;
         --warn: #e0b04f;
         --bad: #f07178;
+        --role-system: #b39ddb;
+        --role-user: #7aa2f7;
+        --role-assistant: #4fc283;
+        --role-tool: #f0a35e;
         --j-key: #c792ea;
         --j-str: #a5d6a7;
         --j-num: #f9ae58;
@@ -117,6 +125,9 @@ button:hover { border-color: var(--accent); }
 .row .line { display: flex; gap: 8px; align-items: baseline; }
 .row .path { font-family: var(--mono); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row .meta { font-size: 12px; color: var(--muted); }
+.row .model { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .meta > span { white-space: nowrap; }
+.row .tools { color: var(--role-tool); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
 .badge {
     display: inline-block;
@@ -172,6 +183,55 @@ button:hover { border-color: var(--accent); }
 .headers td:first-child { color: var(--muted); white-space: nowrap; width: 1%; }
 
 .error { color: var(--bad); }
+
+/* Conversation view */
+details > summary { cursor: pointer; }
+.tools-offered > summary h3 { display: inline; }
+.tool-spec { margin-top: 8px; }
+.tool-spec pre { margin-top: 6px; }
+
+.message {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+}
+.message-role {
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 4px;
+}
+details.message > summary .message-role { display: inline; }
+details.message[open] > summary { margin-bottom: 6px; }
+.role-system { border-left-color: var(--role-system); }
+.role-system .message-role { color: var(--role-system); }
+.role-user { border-left-color: var(--role-user); }
+.role-user > .message-role { color: var(--role-user); }
+.role-assistant { border-left-color: var(--role-assistant); }
+.role-assistant > .message-role { color: var(--role-assistant); }
+.role-tool { border-left-color: var(--role-tool); }
+.role-tool > .message-role { color: var(--role-tool); }
+.message.answer { box-shadow: 0 0 0 1px var(--role-assistant); }
+
+.part-text { white-space: pre-wrap; word-break: break-word; }
+.part-text + .part-text, .message > * + .tool-card, .tool-card + * { margin-top: 6px; }
+.part-thinking { color: var(--muted); font-style: italic; margin-bottom: 6px; }
+
+.tool-card {
+    border: 1px dashed var(--role-tool);
+    border-radius: 6px;
+    padding: 6px 10px;
+    background: var(--panel-2);
+}
+.tool-card.failed { border-color: var(--bad); }
+.tool-head { font-size: 13px; margin-bottom: 4px; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.tool-arrow { color: var(--role-tool); font-weight: 700; }
+.tool-id { font-family: var(--mono); font-size: 11px; }
+.finish { text-transform: none; letter-spacing: 0; color: var(--text); font-family: var(--mono); }
 
 .j-key { color: var(--j-key); }
 .j-str { color: var(--j-str); }

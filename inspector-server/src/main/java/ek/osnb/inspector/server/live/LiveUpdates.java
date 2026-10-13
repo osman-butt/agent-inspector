@@ -3,6 +3,7 @@ package ek.osnb.inspector.server.live;
 import ek.osnb.inspector.server.api.ExchangeSummary;
 import ek.osnb.inspector.server.capture.ExchangeStore.ExchangeSaved;
 import ek.osnb.inspector.server.capture.ExchangeStore.StoreCleared;
+import ek.osnb.inspector.server.wire.WireParsers;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +22,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class LiveUpdates {
 
     private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
+    private final WireParsers parsers;
+
+    public LiveUpdates(WireParsers parsers) {
+        this.parsers = parsers;
+    }
 
     @GetMapping(path = "/api/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribe() throws IOException {
@@ -35,7 +41,8 @@ public class LiveUpdates {
 
     @EventListener
     void onSaved(ExchangeSaved saved) {
-        broadcast(SseEmitter.event().name("exchange").data(ExchangeSummary.from(saved.exchange())));
+        ExchangeSummary summary = ExchangeSummary.from(saved.exchange(), parsers.parse(saved.exchange()).orElse(null));
+        broadcast(SseEmitter.event().name("exchange").data(summary));
     }
 
     @EventListener
