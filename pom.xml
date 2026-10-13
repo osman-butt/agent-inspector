@@ -16,7 +16,7 @@
     <packaging>pom</packaging>
     <name>agent-inspector</name>
     <description>See what your AI apps send to the model: requests, responses and tool calls</description>
-    <url>https://github.com/osman-butt/agent-inspector-starter</url>
+    <url>https://github.com/osman-butt/agent-inspector</url>
 
     <licenses>
         <license>
@@ -36,9 +36,9 @@
     <scm child.scm.url.inherit.append.path="false"
          child.scm.connection.inherit.append.path="false"
          child.scm.developerConnection.inherit.append.path="false">
-        <url>https://github.com/osman-butt/agent-inspector-starter</url>
-        <connection>scm:git:https://github.com/osman-butt/agent-inspector-starter.git</connection>
-        <developerConnection>scm:git:git@github.com:osman-butt/agent-inspector-starter.git</developerConnection>
+        <url>https://github.com/osman-butt/agent-inspector</url>
+        <connection>scm:git:https://github.com/osman-butt/agent-inspector.git</connection>
+        <developerConnection>scm:git:git@github.com:osman-butt/agent-inspector.git</developerConnection>
     </scm>
 
     <modules>
