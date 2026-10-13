@@ -39,6 +39,13 @@ Open http://localhost:7070. **Sessions** lists each agent run; open one to see i
 - **Round-trips**: what was sent to the model (messages re-sent from earlier round-trips are
   folded away), the tools offered, the model's answer, tool calls with their arguments and how
   long each tool ran, finish reason, tokens and latency.
+- **The JSON on the wire**, folded until you click: every message has a *JSON* fold with the message
+  exactly as it was sent or received, and every round-trip has *Request JSON* and *Response JSON*
+  folds with the full bodies (streamed answers event by event). Folds stay open while new traffic
+  comes in.
+- **Copy as cURL** puts the call on your clipboard as a `curl` command. It goes through the
+  inspector, so re-running it is recorded too, and it reads the API key from `$OPENAI_API_KEY`
+  or `$ANTHROPIC_API_KEY`, because the recorded key is redacted.
 - **Round-trip ↗** opens one call with its raw request and response, headers included
   (API keys redacted).
 
@@ -146,7 +153,7 @@ records it and doesn't forward it.
 | `inspector-sample` | a small Spring AI app to try it with |
 
 Run all tests with `./mvnw verify`. The OpenAI parser tests use traffic recorded from Docker Model
-Runner with the sample app.
+Runner with the sample app. The UI's curl builder has its own tests: `node --test inspector-server/src/test/js/`.
 
 ## Limitations
 

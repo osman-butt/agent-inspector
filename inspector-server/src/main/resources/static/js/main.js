@@ -4,6 +4,7 @@ import {renderList} from './render/list.js';
 import {renderRequest, renderResponse} from './render/raw.js';
 import {renderSessionDetail, renderSessionList} from './render/sessions.js';
 import {fillWire} from './render/wire.js';
+import {isTruncated, toCurl} from './curl.js';
 import {escapeHtml, formatDuration, formatTokens, statusClass} from './util.js';
 
 const TABS = {
@@ -96,7 +97,11 @@ function renderExchange(exchange) {
     return `
         ${back}
         <div class="detail-head">
-            <h2>${escapeHtml(parsed?.model ?? `${exchange.request.method} ${exchange.request.path || '/'}`)}</h2>
+            <div class="head-line">
+                <h2>${escapeHtml(parsed?.model ?? `${exchange.request.method} ${exchange.request.path || '/'}`)}</h2>
+                <span class="spacer"></span>
+                <button type="button" class="copy-curl" data-exchange-id="${escapeHtml(exchange.id)}">Copy as cURL</button>
+            </div>
             <div class="url">${escapeHtml(exchange.request.method)} ${escapeHtml(exchange.request.url)}</div>
             <div class="chips">
                 ${chip(exchange.route)}
@@ -200,7 +205,24 @@ document.querySelector('.list-tabs').addEventListener('click', event => {
     }
 });
 
+/** Copies the call as a curl command and says so on the button for a moment. */
+async function copyCurl(button) {
+    const exchange = await loadExchange(button.dataset.exchangeId);
+    try {
+        await navigator.clipboard.writeText(toCurl(exchange, location.origin));
+        button.textContent = isTruncated(exchange) ? 'Copied (body truncated!)' : 'Copied ✓';
+    } catch {
+        button.textContent = 'Copy failed';
+    }
+    setTimeout(() => button.textContent = 'Copy as cURL', 1500);
+}
+
 detailEl.addEventListener('click', event => {
+    const copy = event.target.closest('.copy-curl');
+    if (copy) {
+        copyCurl(copy);
+        return;
+    }
     const tab = event.target.closest('.tab');
     const turn = event.target.closest('.turn-open');
     const back = event.target.closest('.back');

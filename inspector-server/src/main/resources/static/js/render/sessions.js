@@ -51,6 +51,8 @@ function renderTurn(turn, index, names, executions) {
                 ${exchange.durationMs != null ? `<span class="badge">${formatDuration(exchange.durationMs)}</span>` : ''}
                 ${exchange.inputTokens != null ? `<span class="badge">${formatTokens(exchange.inputTokens, exchange.outputTokens)}</span>` : ''}
                 ${turn.finishReason ? `<span class="badge">${escapeHtml(turn.finishReason)}</span>` : ''}
+                <span class="spacer"></span>
+                <button type="button" class="copy-curl" data-exchange-id="${escapeHtml(exchange.id)}">Copy as cURL</button>
             </div>
             ${renderWire(exchange.id, null, exchange)}
             ${turn.resent ? `<div class="resent-note muted">↺ ${plural(turn.resent, 'earlier message')} re-sent</div>` : ''}
