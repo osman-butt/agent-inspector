@@ -6,47 +6,36 @@ Model Runner.
 
 ## Use it in your app
 
-**1. Add the starter** to your `pom.xml`:
+**1. Add the starter** to your `pom.xml`. It's on Maven Central, so nothing else is needed:
 
 ```xml
-<dependencies>
-    <dependency>
-        <groupId>io.github.osman-butt</groupId>
-        <artifactId>agent-inspector-spring-boot-starter</artifactId>
-        <version>0.1.0</version>
-    </dependency>
-</dependencies>
-
-<repositories>
-    <repository>
-        <id>github</id>
-        <url>https://maven.pkg.github.com/osman-butt/agent-inspector-starter</url>
-    </repository>
-</repositories>
+<dependency>
+    <groupId>io.github.osman-butt</groupId>
+    <artifactId>agent-inspector-spring-boot-starter</artifactId>
+    <version>0.1.0</version>
+</dependency>
 ```
 
-**2. Log in to GitHub Packages** once, in `~/.m2/settings.xml`, with a GitHub personal access token
-(classic) that has the `read:packages` scope:
-
-```xml
-<settings>
-    <servers>
-        <server>
-            <id>github</id>
-            <username>your-github-username</username>
-            <password>your-token</password>
-        </server>
-    </servers>
-</settings>
-```
-
-**3. Run your app** and open http://localhost:7070. The app's log shows the address:
+**2. Run your app** and open http://localhost:7070. The app's log shows the address:
 
 ```
 Agent Inspector UI: http://localhost:7070 (running in this app)
 ```
 
 That's it. Nothing else in your app changes.
+
+To try the latest unreleased version, use `0.1.0-SNAPSHOT` and add Central's snapshot repository:
+
+```xml
+<repositories>
+    <repository>
+        <id>central-snapshots</id>
+        <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+        <releases><enabled>false</enabled></releases>
+        <snapshots><enabled>true</enabled></snapshots>
+    </repository>
+</repositories>
+```
 
 ## What you see
 
