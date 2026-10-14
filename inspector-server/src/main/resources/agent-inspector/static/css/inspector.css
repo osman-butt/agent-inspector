@@ -304,6 +304,7 @@ details.message[open] > summary { margin-bottom: 6px; }
 .step-tool.failed { color: var(--bad); border-color: var(--bad); }
 .step-tool.running, .step-tool.unknown { color: var(--muted); }
 .step-tool b, .step-tool .badge { color: var(--text); }
+.badge.mcp { color: var(--role-system); border-color: var(--role-system); }
 .turn { position: relative; margin-bottom: 20px; }
 .turn::before {
     content: "";

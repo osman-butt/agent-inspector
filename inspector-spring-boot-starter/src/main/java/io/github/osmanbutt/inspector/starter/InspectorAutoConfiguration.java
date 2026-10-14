@@ -1,6 +1,7 @@
 package io.github.osmanbutt.inspector.starter;
 
 import io.micrometer.observation.ObservationRegistry;
+import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.tool.execution.ToolExecutionExceptionProcessor;
 import org.springframework.ai.tool.observation.ToolCallingObservationContext;
 import org.springframework.beans.factory.ObjectProvider;
@@ -16,7 +17,8 @@ import org.springframework.util.ClassUtils;
 /**
  * Active only when {@link InspectorEnvironmentPostProcessor} found a running inspector.
  * Reports tool executions and, when the app uses {@code ChatClient}, each call with its
- * advisor chain, from the observations Spring AI emits.
+ * advisor chain, from the observations Spring AI emits; with an MCP client, also which tools
+ * come from MCP servers.
  */
 // After Boot's own observation setup, so the registry below only fills in a missing one.
 @AutoConfiguration(afterName = "org.springframework.boot.micrometer.observation.autoconfigure.ObservationAutoConfiguration")
@@ -26,6 +28,9 @@ public class InspectorAutoConfiguration {
 
     /** ChatClient is optional: an app may use ChatModel directly. */
     private static final String CHAT_CLIENT = "org.springframework.ai.chat.client.observation.ChatClientObservationContext";
+
+    /** MCP is optional too. */
+    private static final String MCP_TOOL_CALLBACK = "org.springframework.ai.mcp.SyncMcpToolCallback";
 
     @Bean
     InspectorClient agentInspectorClient(Environment environment) {
@@ -49,6 +54,7 @@ public class InspectorAutoConfiguration {
      */
     @Bean
     static BeanPostProcessor agentInspectorBeanPostProcessor(ObjectProvider<InspectorClient> client,
+                                                             ObjectProvider<ToolCallbackProvider> toolCallbackProviders,
                                                              Environment environment) {
         return new BeanPostProcessor() {
             @Override
@@ -58,6 +64,10 @@ public class InspectorAutoConfiguration {
                     registry.observationConfig().observationHandler(new ToolExecutionObservationHandler(client.getObject(), app));
                     if (ClassUtils.isPresent(CHAT_CLIENT, getClass().getClassLoader())) {
                         registry.observationConfig().observationHandler(new ChatClientObservationHandler(client.getObject(), app));
+                    }
+                    if (ClassUtils.isPresent(MCP_TOOL_CALLBACK, getClass().getClassLoader())) {
+                        registry.observationConfig().observationHandler(
+                                new McpToolsReporter(client.getObject(), app, toolCallbackProviders::orderedStream));
                     }
                 }
                 if (bean instanceof ToolExecutionExceptionProcessor processor && !(bean instanceof ToolFailures.Recording)) {

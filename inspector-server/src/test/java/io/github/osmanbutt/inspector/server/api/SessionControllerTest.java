@@ -150,6 +150,33 @@ class SessionControllerTest {
     }
 
     @Test
+    void labelsTheToolsThatComeFromMcpServers() {
+        routes.register("mcp-app-openai", URI.create("http://localhost:12434/engines/v1"), "mcp-app");
+        Exchange first = save(pending("mcp-app-openai", "/chat/completions", read("openai/tool-call.request.json"), Map.of()),
+                read("openai/tool-call.response.json"));
+        String session = tracker.placement(first.id()).orElseThrow().sessionId();
+
+        assertThat(mvc.post().uri("/api/mcp-tools").contentType("application/json").content("""
+                {"app": "mcp-app", "tools": [{"name": "weather", "server": "weather-server"}]}
+                """)).hasStatus(202);
+
+        assertThat(mvc.get().uri("/api/sessions/{id}", session))
+                .bodyJson()
+                .extractingPath("$.mcpTools").isEqualTo(Map.of("weather", "weather-server"));
+        // the dmr route belongs to no app, so nothing is labelled there
+        assertThat(mvc.get().uri("/api/sessions/{id}", sessionId))
+                .bodyJson()
+                .extractingPath("$.mcpTools").asMap().isEmpty();
+    }
+
+    @Test
+    void refusesAnMcpReportWithoutItsApp() {
+        assertThat(mvc.post().uri("/api/mcp-tools").contentType("application/json").content("""
+                {"tools": [{"name": "weather", "server": "weather-server"}]}
+                """)).hasStatus(400);
+    }
+
+    @Test
     void unknownSessionIsNotFound() {
         assertThat(mvc.get().uri("/api/sessions/nope")).hasStatus(404);
     }

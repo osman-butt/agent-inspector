@@ -179,6 +179,11 @@ function connect() {
             showDetail(); // the report arrives when the call ends, after its round-trips
         }
     });
+    source.addEventListener('mcp-tools', () => {
+        if (state.selected) {
+            showDetail(); // labels the app's MCP tools
+        }
+    });
     source.addEventListener('cleared', () => {
         exchangeCache.clear();
         state.sessions = [];

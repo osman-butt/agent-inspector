@@ -6,6 +6,7 @@ import io.github.osmanbutt.inspector.server.capture.ExchangeStore;
 import io.github.osmanbutt.inspector.server.chatclient.ChatClientCall;
 import io.github.osmanbutt.inspector.server.chatclient.ChatClientCallStore;
 import io.github.osmanbutt.inspector.server.proxy.RouteRegistry;
+import io.github.osmanbutt.inspector.server.tools.McpToolCatalog;
 import io.github.osmanbutt.inspector.server.tools.ToolExecutionStore;
 import io.github.osmanbutt.inspector.server.wire.ChatMessage;
 import io.github.osmanbutt.inspector.server.wire.ParsedExchange;
@@ -30,15 +31,18 @@ public class SessionViews {
     private final ToolExecutionStore toolExecutions;
     private final ChatClientCallStore chatClientCalls;
     private final RouteRegistry routes;
+    private final McpToolCatalog mcpTools;
 
     public SessionViews(SessionTracker tracker, ExchangeStore store, WireParsers parsers,
-                        ToolExecutionStore toolExecutions, ChatClientCallStore chatClientCalls, RouteRegistry routes) {
+                        ToolExecutionStore toolExecutions, ChatClientCallStore chatClientCalls, RouteRegistry routes,
+                        McpToolCatalog mcpTools) {
         this.tracker = tracker;
         this.store = store;
         this.parsers = parsers;
         this.toolExecutions = toolExecutions;
         this.chatClientCalls = chatClientCalls;
         this.routes = routes;
+        this.mcpTools = mcpTools;
     }
 
     private record Round(Exchange exchange, ParsedExchange parsed) {
@@ -76,8 +80,10 @@ public class SessionViews {
                     call.map(ChatClientCall::id).orElse(null)));
         }
         List<String> toolCallIds = rounds.stream().flatMap(round -> round.parsed().toolCallIds().stream()).toList();
+        String route = rounds.getFirst().exchange().route();
         return Optional.of(new SessionDetail(summarize(sessionId, rounds), turns,
-                toolExecutions.forToolCalls(toolCallIds), List.copyOf(calls.values())));
+                toolExecutions.forToolCalls(toolCallIds), List.copyOf(calls.values()),
+                routes.app(route).map(mcpTools::forApp).orElse(Map.of())));
     }
 
     /**

@@ -13,6 +13,7 @@ import java.util.Map;
  * exchange's place in its session, and what the app reported about running the tools.
  *
  * @param toolExecutions by tool call id
+ * @param mcpTools       the app's tools that come from MCP servers: tool name to server
  */
 public record ExchangeDetail(
         String id,
@@ -22,11 +23,12 @@ public record ExchangeDetail(
         Exchange.Response response,
         ParsedExchange parsed,
         Placement session,
-        Map<String, ToolExecution> toolExecutions) {
+        Map<String, ToolExecution> toolExecutions,
+        Map<String, String> mcpTools) {
 
     static ExchangeDetail of(Exchange exchange, ParsedExchange parsed, Placement session,
-                             Map<String, ToolExecution> toolExecutions) {
+                             Map<String, ToolExecution> toolExecutions, Map<String, String> mcpTools) {
         return new ExchangeDetail(exchange.id(), exchange.route(), exchange.startedAt(),
-                exchange.request(), exchange.response(), parsed, session, toolExecutions);
+                exchange.request(), exchange.response(), parsed, session, toolExecutions, mcpTools);
     }
 }

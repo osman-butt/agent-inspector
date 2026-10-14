@@ -60,7 +60,7 @@ public class ToolExecutionObservationHandler implements ObservationHandler<ToolC
     }
 
     /** Some tools (MCP tools, for one) are observed again inside their own observation: report the outer one only. */
-    private static boolean isRepeat(ToolCallingObservationContext context) {
+    static boolean isRepeat(ToolCallingObservationContext context) {
         ObservationView parent = context.getParentObservation();
         while (parent != null) {
             if (parent.getContextView() instanceof ToolCallingObservationContext outer

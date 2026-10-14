@@ -35,9 +35,9 @@ export function renderSessionList(container, sessions, selectedId) {
         </button>`).join('');
 }
 
-function renderTurn(turn, index, names, executions) {
+function renderTurn(turn, index, names, executions, mcpTools) {
     const exchange = turn.exchange;
-    const options = {names, executions};
+    const options = {names, executions, mcpTools};
     const answer = turn.output
         ? renderAnswer(turn.output, {...options, streamed: exchange.streamed, key: `${exchange.id}:answer`})
         : turn.error
@@ -163,6 +163,6 @@ function renderTimeline(session, names) {
     return session.turns.map((turn, index) => {
         const call = turn.chatClientCallId !== previousCall ? calls.get(turn.chatClientCallId) : null;
         previousCall = turn.chatClientCallId;
-        return (call ? renderChatClientCall(call) : '') + renderTurn(turn, index, names, session.toolExecutions ?? {});
+        return (call ? renderChatClientCall(call) : '') + renderTurn(turn, index, names, session.toolExecutions ?? {}, session.mcpTools ?? {});
     }).join('');
 }

@@ -11,6 +11,8 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.function.Supplier;
 
 /**
  * Sends reports to the inspector without getting in the application's way: posts happen
@@ -50,6 +52,30 @@ public class InspectorClient implements AutoCloseable {
             return;
         }
         sender.execute(() -> send(path, body));
+    }
+
+    /**
+     * Works out the payload in the background, then posts it; nothing is posted when it is null.
+     * For reports that take more than the application's thread should spend on them.
+     */
+    public void postLater(String path, Supplier<?> payload) {
+        if (System.currentTimeMillis() < pausedUntil) {
+            return;
+        }
+        try {
+            sender.execute(() -> {
+                try {
+                    Object value = payload.get();
+                    if (value != null) {
+                        send(path, json.writeValueAsString(value));
+                    }
+                } catch (RuntimeException e) {
+                    log.debug("Could not prepare report for " + path, e);
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            // closed: the application is shutting down
+        }
     }
 
     private void send(String path, String body) {

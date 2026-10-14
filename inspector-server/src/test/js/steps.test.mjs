@@ -31,6 +31,7 @@ const toolLoop = (overrides = {}) => ({
         call_1: {toolCallId: 'call_1', name: 'weather', durationMs: 3, error: null},
         call_2: {toolCallId: 'call_2', name: 'currentTime', durationMs: 1, error: null},
     },
+    mcpTools: {weather: 'weather-server'},
     ...overrides,
 });
 
@@ -41,8 +42,8 @@ test('a tool loop reads as question, tool calls, tool runs and answer', () => {
     assert.equal(steps[0].text, 'Weather in Copenhagen?');
     assert.deepEqual(steps[1].calls, ['weather', 'currentTime']);
     assert.equal(steps[1].durationMs, 1200);
-    assert.deepEqual(steps[2].tools.map(tool => [tool.name, tool.state, tool.durationMs]),
-        [['weather', 'ok', 3], ['currentTime', 'ok', 1]]);
+    assert.deepEqual(steps[2].tools.map(tool => [tool.name, tool.state, tool.durationMs, tool.mcp]),
+        [['weather', 'ok', 3, 'weather-server'], ['currentTime', 'ok', 1, null]]);
     assert.equal(steps[3].text, 'Windy, 1 °C and 14:05 there.');
     assert.equal(steps[3].turn, 1);
 });
@@ -69,12 +70,12 @@ test('Anthropic tool results arrive as user messages and are not questions', () 
 });
 
 test('without the starter, tool state comes from the results sent back to the model', () => {
-    const session = toolLoop({toolExecutions: {}});
+    const session = toolLoop({toolExecutions: {}, mcpTools: undefined});
     session.turns[1].newMessages[0] = message('tool', toolResult('call_1', 'Unknown city', true));
 
     const tools = sessionSteps(session)[2].tools;
 
-    assert.deepEqual(tools.map(tool => [tool.state, tool.durationMs]), [['failed', undefined], ['ok', undefined]]);
+    assert.deepEqual(tools.map(tool => [tool.state, tool.durationMs, tool.mcp]), [['failed', undefined, null], ['ok', undefined, null]]);
 });
 
 test('a session still running shows the model waiting and its tools running', () => {
@@ -98,7 +99,7 @@ test('a failed round-trip says why', () => {
     assert.equal(steps[1].error, 'HTTP 500: model overloaded');
 });
 
-test('the rendered steps escape what the model and user wrote', () => {
+test('the rendered steps escape what the model and user wrote and label MCP tools', () => {
     const session = toolLoop();
     session.turns[0].newMessages[1] = message('user', text('<script>alert(1)</script>'));
 
@@ -106,5 +107,6 @@ test('the rendered steps escape what the model and user wrote', () => {
 
     assert.ok(!html.includes('<script>'));
     assert.ok(html.includes('&lt;script&gt;'));
+    assert.ok(html.includes('MCP · weather-server'));
     assert.ok(html.includes('data-scroll-turn="1"'));
 });

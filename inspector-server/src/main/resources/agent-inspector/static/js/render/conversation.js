@@ -1,4 +1,4 @@
-import {escapeHtml, formatDuration, highlightJson, tryParseJson} from '../util.js';
+import {escapeHtml, formatDuration, highlightJson, mcpBadge, tryParseJson} from '../util.js';
 import {renderWire} from './wire.js';
 
 /** Tool call id -> tool name, so a result can say which tool it answers. */
@@ -31,7 +31,10 @@ function renderExecution(execution) {
         : `<div class="tool-exec">✓ ${ran}</div>`;
 }
 
-function renderPart(part, names, executions) {
+/** The MCP server a tool comes from, or null for the app's own tools. */
+const mcpServer = (mcpTools, name) => name != null && name in mcpTools ? mcpTools[name] : null;
+
+function renderPart(part, names, executions, mcpTools) {
     switch (part.type) {
         case 'text':
             return `<div class="part-text">${escapeHtml(part.text)}</div>`;
@@ -41,16 +44,19 @@ function renderPart(part, names, executions) {
             return `
                 <div class="tool-card call" data-tool-call-id="${escapeHtml(part.id)}">
                     <div class="tool-head"><span class="tool-arrow">→</span> calls <b>${escapeHtml(part.name)}</b>
+                        ${mcpBadge(mcpServer(mcpTools, part.name))}
                         <span class="muted tool-id">${escapeHtml(part.id ?? '')}</span></div>
                     <pre>${jsonOrText(part.arguments ?? '')}</pre>
                     ${renderExecution(executions[part.id])}
                 </div>`;
         case 'tool_result': {
             const failed = part.error || executions[part.toolCallId]?.error;
+            const name = names.get(part.toolCallId);
             return `
                 <div class="tool-card result ${failed ? 'failed' : ''}">
                     <div class="tool-head"><span class="tool-arrow">←</span> result of
-                        <b>${escapeHtml(names.get(part.toolCallId) ?? 'tool')}</b>
+                        <b>${escapeHtml(name ?? 'tool')}</b>
+                        ${mcpBadge(mcpServer(mcpTools, name))}
                         ${failed ? '<span class="badge status-bad">error</span>' : ''}
                         <span class="muted tool-id">${escapeHtml(part.toolCallId ?? '')}</span></div>
                     <pre>${jsonOrText(part.content ?? '')}</pre>
@@ -73,12 +79,13 @@ function renderRawJson(message, key) {
 /**
  * @param options.names      tool call id to tool name, for labelling results
  * @param options.executions tool executions reported by the starter, by tool call id
+ * @param options.mcpTools   tool name to the MCP server it comes from, for the app's MCP tools
  * @param options.extraClass e.g. {@code answer} or {@code new}
  * @param options.key        stable id for the message's folds, so they stay open across live updates
  */
-export function renderMessage(message, {names, executions = {}, extraClass = '', key}) {
+export function renderMessage(message, {names, executions = {}, mcpTools = {}, extraClass = '', key}) {
     const parts = message.parts.length
-        ? message.parts.map(part => renderPart(part, names, executions)).join('')
+        ? message.parts.map(part => renderPart(part, names, executions, mcpTools)).join('')
         : '<div class="muted">(empty)</div>';
     const role = escapeHtml(message.role);
     // System prompts are often long and the same every time: fold them, with a preview.
@@ -108,7 +115,7 @@ export function renderAnswer(output, {streamed, ...options}) {
     return renderMessage(output, {...options, extraClass: 'answer'}) + note;
 }
 
-function renderTools(tools, key) {
+function renderTools(tools, mcpTools, key) {
     if (!tools.length) {
         return '';
     }
@@ -117,7 +124,7 @@ function renderTools(tools, key) {
             <summary><h3>Tools offered to the model (${tools.length})</h3></summary>
             ${tools.map(tool => `
                 <div class="box tool-spec">
-                    <b>${escapeHtml(tool.name)}</b>
+                    <b>${escapeHtml(tool.name)}</b> ${mcpBadge(mcpServer(mcpTools, tool.name))}
                     <div class="muted">${escapeHtml(tool.description ?? '')}</div>
                     ${tool.schema ? `<pre>${highlightJson(tool.schema)}</pre>` : ''}
                 </div>`).join('')}
@@ -141,7 +148,8 @@ function renderSent(messages, newFrom, options, key) {
 
 export function renderConversation(exchange) {
     const parsed = exchange.parsed;
-    const options = {names: toolNames([...parsed.messages, parsed.output]), executions: exchange.toolExecutions ?? {}};
+    const mcpTools = exchange.mcpTools ?? {};
+    const options = {names: toolNames([...parsed.messages, parsed.output]), executions: exchange.toolExecutions ?? {}, mcpTools};
     const answer = parsed.output
         ? renderAnswer(parsed.output, {...options, streamed: parsed.streamed, key: `${exchange.id}:answer`})
         : parsed.error
@@ -149,7 +157,7 @@ export function renderConversation(exchange) {
             : '<p class="muted">Waiting for the model…</p>';
     return `
         ${renderWire(exchange.id, exchange)}
-        ${renderTools(parsed.tools, exchange.id)}
+        ${renderTools(parsed.tools, mcpTools, exchange.id)}
         <div class="section">
             <h3>Sent to the model (${parsed.messages.length} messages)</h3>
             ${renderSent(parsed.messages, exchange.session?.newFrom ?? 0, options, exchange.id)}

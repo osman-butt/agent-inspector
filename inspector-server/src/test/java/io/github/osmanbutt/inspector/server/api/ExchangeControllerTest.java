@@ -2,6 +2,8 @@ package io.github.osmanbutt.inspector.server.api;
 
 import io.github.osmanbutt.inspector.server.capture.Exchange;
 import io.github.osmanbutt.inspector.server.capture.ExchangeStore;
+import io.github.osmanbutt.inspector.server.proxy.RouteRegistry;
+import io.github.osmanbutt.inspector.server.tools.McpToolCatalog;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
+import java.net.URI;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,6 +25,12 @@ class ExchangeControllerTest {
 
     @Autowired
     ExchangeStore store;
+
+    @Autowired
+    RouteRegistry routes;
+
+    @Autowired
+    McpToolCatalog mcpTools;
 
     Exchange finished;
     Exchange pending;
@@ -64,6 +73,21 @@ class ExchangeControllerTest {
                          "response": {"body": "{\\"id\\":\\"chatcmpl-1\\"}"},
                          "parsed": {"provider": "openai", "model": "ai/qwen3"}}
                         """);
+    }
+
+    @Test
+    void labelsTheToolsOfItsAppThatComeFromMcpServers() {
+        routes.register("mcp-exchange-openai", URI.create("http://localhost:12434/engines/v1"), "mcp-exchange-app");
+        mcpTools.save("mcp-exchange-app", Map.of("weather", "weather-server"));
+        Exchange exchange = Exchange.start("mcp-exchange-openai", request("/chat/completions"));
+        store.save(exchange);
+
+        assertThat(mvc.get().uri("/api/exchanges/{id}", exchange.id()))
+                .bodyJson()
+                .extractingPath("$.mcpTools").isEqualTo(Map.of("weather", "weather-server"));
+        assertThat(mvc.get().uri("/api/exchanges/{id}", finished.id()))
+                .bodyJson()
+                .extractingPath("$.mcpTools").asMap().isEmpty();
     }
 
     @Test

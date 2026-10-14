@@ -6,6 +6,7 @@ import io.github.osmanbutt.inspector.server.capture.ExchangeStore.StoreCleared;
 import io.github.osmanbutt.inspector.server.chatclient.ChatClientCallStore.ChatClientCallSaved;
 import io.github.osmanbutt.inspector.server.session.SessionTracker.SessionUpdated;
 import io.github.osmanbutt.inspector.server.session.SessionViews;
+import io.github.osmanbutt.inspector.server.tools.McpToolCatalog.McpToolsChanged;
 import io.github.osmanbutt.inspector.server.tools.ToolExecutionStore.ToolExecutionSaved;
 import io.github.osmanbutt.inspector.server.wire.WireParsers;
 import org.springframework.context.event.ContextClosedEvent;
@@ -22,8 +23,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /**
  * Pushes store changes to every open UI over server-sent events: an {@code exchange} event
  * with the summary of each new or completed exchange, a {@code session} event with the
- * summary of the session it belongs to, {@code tool} and {@code chat-client-call} events for
- * what the starter reports, and a {@code cleared} event.
+ * summary of the session it belongs to, {@code tool}, {@code chat-client-call} and
+ * {@code mcp-tools} events for what the starter reports, and a {@code cleared} event.
  */
 @RestController
 public class LiveUpdates {
@@ -68,6 +69,11 @@ public class LiveUpdates {
     @EventListener
     void onChatClientCall(ChatClientCallSaved saved) {
         broadcast(SseEmitter.event().name("chat-client-call").data(saved.call()));
+    }
+
+    @EventListener
+    void onMcpTools(McpToolsChanged changed) {
+        broadcast(SseEmitter.event().name("mcp-tools").data(changed.app()));
     }
 
     @EventListener

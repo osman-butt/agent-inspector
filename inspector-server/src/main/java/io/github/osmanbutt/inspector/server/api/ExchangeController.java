@@ -1,7 +1,9 @@
 package io.github.osmanbutt.inspector.server.api;
 
 import io.github.osmanbutt.inspector.server.capture.ExchangeStore;
+import io.github.osmanbutt.inspector.server.proxy.RouteRegistry;
 import io.github.osmanbutt.inspector.server.session.SessionTracker;
+import io.github.osmanbutt.inspector.server.tools.McpToolCatalog;
 import io.github.osmanbutt.inspector.server.tools.ToolExecutionStore;
 import io.github.osmanbutt.inspector.server.wire.ParsedExchange;
 import io.github.osmanbutt.inspector.server.wire.WireParsers;
@@ -25,13 +27,17 @@ public class ExchangeController {
     private final WireParsers parsers;
     private final SessionTracker sessions;
     private final ToolExecutionStore toolExecutions;
+    private final RouteRegistry routes;
+    private final McpToolCatalog mcpTools;
 
     public ExchangeController(ExchangeStore store, WireParsers parsers, SessionTracker sessions,
-                              ToolExecutionStore toolExecutions) {
+                              ToolExecutionStore toolExecutions, RouteRegistry routes, McpToolCatalog mcpTools) {
         this.store = store;
         this.parsers = parsers;
         this.sessions = sessions;
         this.toolExecutions = toolExecutions;
+        this.routes = routes;
+        this.mcpTools = mcpTools;
     }
 
     /** Newest first. */
@@ -48,7 +54,8 @@ public class ExchangeController {
                 .map(exchange -> {
                     ParsedExchange parsed = parsers.parse(exchange).orElse(null);
                     return ExchangeDetail.of(exchange, parsed, sessions.placement(id).orElse(null),
-                            parsed == null ? Map.of() : toolExecutions.forToolCalls(parsed.toolCallIds()));
+                            parsed == null ? Map.of() : toolExecutions.forToolCalls(parsed.toolCallIds()),
+                            routes.app(exchange.route()).map(mcpTools::forApp).orElse(Map.of()));
                 })
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No exchange " + id));
     }

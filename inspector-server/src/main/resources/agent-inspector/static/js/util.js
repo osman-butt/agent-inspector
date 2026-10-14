@@ -87,6 +87,11 @@ export function formatTokens(input, output) {
     return `${input ?? '?'} → ${output ?? '?'} tok`;
 }
 
+/** Marks a tool that comes from an MCP server; {@code server} is null for the app's own tools. */
+export function mcpBadge(server) {
+    return server == null ? '' : `<span class="badge mcp">${server ? `MCP · ${escapeHtml(server)}` : 'MCP'}</span>`;
+}
+
 /** A 200 can still carry an error, e.g. a stream that broke off halfway. */
 export function statusClass(status, error) {
     if (status == null && !error) {

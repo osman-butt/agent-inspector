@@ -13,12 +13,14 @@ import java.util.Map;
  *
  * @param toolExecutions  what the app reported about running the tools, by tool call id
  * @param chatClientCalls the ChatClient calls that made these round-trips, as reported by the app
+ * @param mcpTools        the app's tools that come from MCP servers: tool name to server
  */
 public record SessionDetail(
         SessionSummary summary,
         List<Turn> turns,
         Map<String, ToolExecution> toolExecutions,
-        List<ChatClientCall> chatClientCalls) {
+        List<ChatClientCall> chatClientCalls,
+        Map<String, String> mcpTools) {
 
     /**
      * @param resent      how many request messages were sent before and are repeated here

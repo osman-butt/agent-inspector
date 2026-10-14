@@ -1,4 +1,4 @@
-import {escapeHtml, formatDuration, formatTokens} from '../util.js';
+import {escapeHtml, formatDuration, formatTokens, mcpBadge} from '../util.js';
 
 /**
  * A session at a glance, worked out from the session detail: what the user asked, what the
@@ -43,9 +43,10 @@ function modelStep(turn, index) {
 /** How each tool the model called went: from the starter's report, else from the result sent back. */
 function toolsStep(turn, index, session, results) {
     const executions = session.toolExecutions ?? {};
+    const mcpTools = session.mcpTools ?? {};
     const isLast = index === session.turns.length - 1;
     const tools = turn.output.parts.filter(part => part.type === 'tool_call').map(call => {
-        const tool = {id: call.id, name: call.name};
+        const tool = {id: call.id, name: call.name, mcp: call.name in mcpTools ? mcpTools[call.name] : null};
         const execution = executions[call.id];
         const result = results.get(call.id);
         if (execution) {
@@ -97,7 +98,7 @@ function renderTool(tool) {
     const title = tool.error ? ` title="${escapeHtml(tool.error)}"` : tool.state === 'running' ? ' title="running…"' : '';
     return `
         <button type="button" class="step-tool ${tool.state}" data-tool-call-id="${escapeHtml(tool.id ?? '')}"${title}>
-            ${TOOL_MARK[tool.state]} ${escapeHtml(tool.name)}
+            ${TOOL_MARK[tool.state]} ${escapeHtml(tool.name)} ${mcpBadge(tool.mcp)}
             ${tool.durationMs != null ? `<span class="muted">${formatDuration(tool.durationMs)}</span>` : ''}
         </button>`;
 }
