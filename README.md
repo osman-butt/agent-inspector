@@ -9,6 +9,8 @@ See what your Spring AI app sends to the model and what comes back: requests, re
 calls, tokens and timing, live in your browser. Works with OpenAI, Claude (Anthropic) and Docker
 Model Runner.
 
+![agent inspector ui](docs/ui.png)
+
 ## Use it in your app
 
 For Spring Boot 4 apps that use Spring AI 2.0, on Java 21 or later.
