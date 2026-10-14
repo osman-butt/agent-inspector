@@ -12,7 +12,7 @@ Model Runner.
 <dependency>
     <groupId>io.github.osman-butt</groupId>
     <artifactId>agent-inspector-spring-boot-starter</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
 </dependency>
 ```
 
@@ -24,7 +24,7 @@ Agent Inspector UI: http://localhost:7070 (running in this app)
 
 That's it. Nothing else in your app changes.
 
-To try the latest unreleased version, use `0.2.0-SNAPSHOT` and add Central's snapshot repository:
+To try the latest unreleased version, use `0.3.0-SNAPSHOT` and add Central's snapshot repository:
 
 ```xml
 <repositories>
