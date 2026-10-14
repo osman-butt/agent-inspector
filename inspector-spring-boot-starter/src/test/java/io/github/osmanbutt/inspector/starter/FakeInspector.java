@@ -8,21 +8,26 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /** Answers the ping like the inspector does (or like some other service) and records what is posted to it. */
 class FakeInspector implements AutoCloseable {
 
     final List<String> posted = new CopyOnWriteArrayList<>();
+    /** Route names another app registered with another upstream: registering them answers 409. */
+    final Set<String> taken = ConcurrentHashMap.newKeySet();
     private final HttpServer server;
 
     FakeInspector(String pingBody) throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/api/ping", exchange -> respond(exchange, pingBody));
+        server.createContext("/api/ping", exchange -> respond(exchange, 200, pingBody));
         server.createContext("/api/", exchange -> {
-            posted.add(exchange.getRequestURI().getPath() + " " +
-                    new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
-            respond(exchange, "{}");
+            String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            posted.add(exchange.getRequestURI().getPath() + " " + body);
+            boolean isTaken = taken.stream().anyMatch(route -> body.contains("\"route\":\"" + route + "\""));
+            respond(exchange, isTaken ? 409 : 200, "{}");
         });
         server.start();
     }
@@ -35,10 +40,10 @@ class FakeInspector implements AutoCloseable {
         return "http://127.0.0.1:" + server.getAddress().getPort();
     }
 
-    private static void respond(HttpExchange exchange, String body) throws IOException {
+    private static void respond(HttpExchange exchange, int status, String body) throws IOException {
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().add("Content-Type", "application/json");
-        exchange.sendResponseHeaders(200, bytes.length);
+        exchange.sendResponseHeaders(status, bytes.length);
         try (OutputStream out = exchange.getResponseBody()) {
             out.write(bytes);
         }

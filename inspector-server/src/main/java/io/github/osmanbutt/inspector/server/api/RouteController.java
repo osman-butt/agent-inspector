@@ -1,6 +1,7 @@
 package io.github.osmanbutt.inspector.server.api;
 
 import io.github.osmanbutt.inspector.server.proxy.RouteRegistry;
+import io.github.osmanbutt.inspector.server.proxy.RouteTakenException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -58,6 +59,8 @@ public class RouteController {
             routes.register(request.route(), request.upstream(), request.app());
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (RouteTakenException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
         }
         return Map.of("route", request.route(), "proxy", "/proxy/" + request.route());
     }

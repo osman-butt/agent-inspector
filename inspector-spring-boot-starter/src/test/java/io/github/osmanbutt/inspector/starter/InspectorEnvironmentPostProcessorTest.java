@@ -98,6 +98,34 @@ class InspectorEnvironmentPostProcessorTest {
     }
 
     @Test
+    void usesAnotherRouteNameWhenAnotherAppsUpstreamHasIt() throws Exception {
+        try (FakeInspector inspector = inspector()) {
+            inspector.taken.add("app-openai");
+            StandardEnvironment environment = run(Set.of(OPENAI), Map.of("agent.inspector.url", inspector.url()));
+
+            assertThat(environment.getProperty("spring.ai.openai.base-url")).isEqualTo(inspector.url() + "/proxy/app-openai-2");
+            assertThat(inspector.posted).containsExactly(
+                    "/api/routes {\"route\":\"app-openai\",\"upstream\":\"https://api.openai.com/v1\",\"app\":\"app\"}",
+                    "/api/routes {\"route\":\"app-openai-2\",\"upstream\":\"https://api.openai.com/v1\",\"app\":\"app\"}");
+        }
+    }
+
+    @Test
+    void goesDirectWhenEveryRouteNameIsTaken() throws Exception {
+        try (FakeInspector inspector = inspector()) {
+            inspector.taken.add("app-openai");
+            for (int number = 2; number <= 9; number++) {
+                inspector.taken.add("app-openai-" + number);
+            }
+            StandardEnvironment environment = run(Set.of(OPENAI), Map.of("agent.inspector.url", inspector.url()));
+
+            assertThat(environment.getProperty("spring.ai.openai.base-url")).isNull();
+            assertThat(environment.getProperty("agent.inspector.active")).isNull();
+            assertThat(inspector.posted).hasSize(9);
+        }
+    }
+
+    @Test
     void changesNothingWhenNoInspectorRunsOrCanBeStarted() {
         StandardEnvironment environment = run(Set.of(OPENAI), Map.of(
                 "agent.inspector.url", "http://127.0.0.1:1",
@@ -126,7 +154,9 @@ class InspectorEnvironmentPostProcessorTest {
             assertThat(ui.body()).contains("<title>Agent Inspector</title>");
 
             // After a DevTools restart, the app finds the inspector it started and uses it again.
-            StandardEnvironment restarted = run(Set.of(OPENAI), Map.of("agent.inspector.url", url), port -> {
+            StandardEnvironment restarted = run(Set.of(OPENAI), Map.of(
+                    "agent.inspector.url", url,
+                    "spring.ai.openai.base-url", "http://localhost:12434/engines/v1"), port -> {
                 throw new AssertionError("started a second inspector");
             });
             assertThat(restarted.getProperty("spring.ai.openai.base-url")).isEqualTo(url + "/proxy/app-openai");
@@ -183,6 +213,10 @@ class InspectorEnvironmentPostProcessorTest {
     void routeNamesAreSafe() {
         assertThat(InspectorEnvironmentPostProcessor.routeName("My Sample_App-openai")).isEqualTo("my-sample-app-openai");
         assertThat(InspectorEnvironmentPostProcessor.routeName("--x--")).isEqualTo("x");
+        assertThat(InspectorEnvironmentPostProcessor.routeName("app-openai", 1)).isEqualTo("app-openai");
+        assertThat(InspectorEnvironmentPostProcessor.routeName("app-openai", 2)).isEqualTo("app-openai-2");
+        String longest = "a".repeat(63);
+        assertThat(InspectorEnvironmentPostProcessor.routeName(longest, 9)).hasSize(63).endsWith("a-9");
     }
 
     /** Runs the post-processor; asked to start an embedded inspector, it only records the port. */

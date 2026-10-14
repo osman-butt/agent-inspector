@@ -35,7 +35,13 @@ public class RouteRegistry {
         return Optional.ofNullable(apps.get(route));
     }
 
-    /** Adds or replaces a route. Names are lowercase letters, digits and dashes. */
+    /**
+     * Adds a route. Names are lowercase letters, digits and dashes. Registering the same upstream
+     * again is fine (an app restarting); a name that forwards somewhere else is refused, so one
+     * app never takes over another's traffic.
+     *
+     * @throws RouteTakenException when the name already forwards to another upstream
+     */
     public void register(String route, URI upstream, String app) {
         if (route == null || !ROUTE_NAME.matcher(route).matches()) {
             throw new IllegalArgumentException("Route names are lowercase letters, digits and dashes: " + route);
@@ -44,7 +50,10 @@ public class RouteRegistry {
                 || !(upstream.getScheme().equals("http") || upstream.getScheme().equals("https"))) {
             throw new IllegalArgumentException("Upstream must be an http(s) URL: " + upstream);
         }
-        routes.put(route, upstream);
+        URI existing = routes.putIfAbsent(route, upstream);
+        if (existing != null && !existing.equals(upstream)) {
+            throw new RouteTakenException("Route " + route + " already forwards to " + existing);
+        }
         if (app != null) {
             apps.put(route, app);
         }

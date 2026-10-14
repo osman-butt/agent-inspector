@@ -20,8 +20,9 @@ import java.util.function.Predicate;
 /**
  * Points this app's Spring AI base URLs at an Agent Inspector's recording proxy. For each
  * provider on the classpath it registers a route named {@code <spring.application.name>-<provider>}
- * that forwards to the base URL the app was configured with (or the provider's default), then
- * overrides the base-url property with {@code <inspector>/proxy/<route>}.
+ * (numbered when another app already uses that name for another upstream) that forwards to the base
+ * URL the app was configured with (or the provider's default), then overrides the base-url property
+ * with {@code <inspector>/proxy/<route>}.
  *
  * <p>It uses the inspector at {@code agent.inspector.url} (default {@code http://localhost:7070})
  * when one runs there. Otherwise it starts one inside this app, on that port or the next free one
@@ -38,6 +39,9 @@ public class InspectorEnvironmentPostProcessor implements EnvironmentPostProcess
 
     /** Ports tried after the configured one when it is taken. */
     private static final int MORE_PORTS = 9;
+
+    /** Names tried for a route: {@code <app>-<provider>}, then {@code -2} to {@code -9} when another app's upstream has it. */
+    private static final int ROUTE_NAMES = 9;
 
     private record Inspector(String url, InspectorConnection connection, boolean embedded) {
     }
@@ -174,21 +178,39 @@ public class InspectorEnvironmentPostProcessor implements EnvironmentPostProcess
                 || provider.bypass().stream().anyMatch(upstream::contains)) {
             return; // already proxied by hand, or a setup the proxy would break
         }
-        String route = routeName(app + "-" + provider.name());
         String url = inspector.url();
-        if (!inspector.connection().registerRoute(route, upstream, app)) {
-            log.warn("Agent Inspector at " + url + " did not accept route " + route + ", " + provider.name() + " goes direct");
-            return;
+        String base = routeName(app + "-" + provider.name());
+        for (int number = 1; number <= ROUTE_NAMES; number++) {
+            String route = routeName(base, number);
+            switch (inspector.connection().registerRoute(route, upstream, app)) {
+                case ACCEPTED -> {
+                    overrides.put(property, url + "/proxy/" + route);
+                    log.info("Agent Inspector: " + provider.name() + " traffic goes through " + url + "/proxy/" + route
+                            + " to " + upstream + (number > 1 ? " (" + base + " forwards elsewhere)" : ""));
+                    return;
+                }
+                case TAKEN -> {
+                    // Another app with the same name and another upstream: try the next name.
+                }
+                case FAILED -> {
+                    log.warn("Agent Inspector at " + url + " did not accept route " + route + ", " + provider.name() + " goes direct");
+                    return;
+                }
+            }
         }
-        overrides.put(property, url + "/proxy/" + route);
-        log.info("Agent Inspector: " + provider.name() + " traffic goes through " + url + "/proxy/" + route
-                + " to " + upstream);
+        log.warn("Agent Inspector at " + url + ": routes " + base + " to " + routeName(base, ROUTE_NAMES)
+                + " forward elsewhere, " + provider.name() + " goes direct");
     }
 
     /** Lowercase letters, digits and dashes, as the inspector expects. */
     static String routeName(String name) {
         String route = name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("^-+|-+$", "");
         return route.length() > 63 ? route.substring(0, 63) : route;
+    }
+
+    /** The route name itself, then numbered ones, shortened so the number always fits. */
+    static String routeName(String base, int number) {
+        return number == 1 ? base : routeName(base.substring(0, Math.min(base.length(), 61)) + "-" + number);
     }
 
     private static String firstText(String... values) {

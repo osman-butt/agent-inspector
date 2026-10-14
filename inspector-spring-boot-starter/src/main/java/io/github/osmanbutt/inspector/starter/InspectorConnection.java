@@ -24,6 +24,13 @@ class InspectorConnection {
         INSPECTOR
     }
 
+    enum Registration {
+        ACCEPTED,
+        /** The name already forwards to another upstream, registered by another app. */
+        TAKEN,
+        FAILED
+    }
+
     /**
      * @param embedded the inspector runs inside an application
      * @param pid      the process it runs in
@@ -79,7 +86,7 @@ class InspectorConnection {
         }
     }
 
-    boolean registerRoute(String route, String upstream, String app) {
+    Registration registerRoute(String route, String upstream, String app) {
         try {
             String body = json.writeValueAsString(new RouteRequest(route, upstream, app));
             HttpResponse<Void> response = client.send(
@@ -89,9 +96,16 @@ class InspectorConnection {
                             .POST(HttpRequest.BodyPublishers.ofString(body))
                             .build(),
                     HttpResponse.BodyHandlers.discarding());
-            return response.statusCode() == 200;
+            return switch (response.statusCode()) {
+                case 200 -> Registration.ACCEPTED;
+                case 409 -> Registration.TAKEN;
+                default -> Registration.FAILED;
+            };
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Registration.FAILED;
         } catch (Exception e) {
-            return false;
+            return Registration.FAILED;
         }
     }
 }
