@@ -1,5 +1,10 @@
 # Agent Inspector
 
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.osman-butt/agent-inspector-spring-boot-starter)](https://central.sonatype.com/artifact/io.github.osman-butt/agent-inspector-spring-boot-starter)
+[![Build](https://github.com/osman-butt/agent-inspector/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/osman-butt/agent-inspector/actions/workflows/build.yml)
+[![License](https://img.shields.io/github/license/osman-butt/agent-inspector)](LICENSE)
+![Java 25](https://img.shields.io/badge/Java-25-blue)
+
 See what your Spring AI app sends to the model and what comes back: requests, responses, tool
 calls, tokens and timing, live in your browser. Works with OpenAI, Claude (Anthropic) and Docker
 Model Runner.
