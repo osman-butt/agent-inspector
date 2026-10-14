@@ -3,13 +3,15 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.osman-butt/agent-inspector-spring-boot-starter)](https://central.sonatype.com/artifact/io.github.osman-butt/agent-inspector-spring-boot-starter)
 [![Build](https://github.com/osman-butt/agent-inspector/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/osman-butt/agent-inspector/actions/workflows/build.yml)
 [![License](https://img.shields.io/github/license/osman-butt/agent-inspector)](LICENSE)
-![Java 25](https://img.shields.io/badge/Java-25-blue)
+![Java 21+](https://img.shields.io/badge/Java-21%2B-blue)
 
 See what your Spring AI app sends to the model and what comes back: requests, responses, tool
 calls, tokens and timing, live in your browser. Works with OpenAI, Claude (Anthropic) and Docker
 Model Runner.
 
 ## Use it in your app
+
+For Spring Boot 4 apps that use Spring AI 2.0, on Java 21 or later.
 
 **1. Add the starter** to your `pom.xml`. It's on Maven Central, so nothing else is needed:
 
