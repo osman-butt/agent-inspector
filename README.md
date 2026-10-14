@@ -19,7 +19,7 @@ For Spring Boot 4 apps that use Spring AI 2.0, on Java 21 or later.
 <dependency>
     <groupId>io.github.osman-butt</groupId>
     <artifactId>agent-inspector-spring-boot-starter</artifactId>
-    <version>0.2.0</version>
+    <version>0.2.1</version>
 </dependency>
 ```
 
