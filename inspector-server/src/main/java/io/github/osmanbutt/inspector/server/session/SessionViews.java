@@ -134,7 +134,9 @@ public class SessionViews {
                 .filter(message -> "user".equals(message.role()))
                 .flatMap(message -> message.parts().stream())
                 .filter(Part.Text.class::isInstance)
-                .map(part -> ((Part.Text) part).text().strip())
+                .map(part -> ((Part.Text) part).text())
+                .filter(text -> text != null && !text.isBlank())
+                .map(String::strip)
                 .findFirst()
                 .map(text -> text.length() > 120 ? text.substring(0, 120) + "…" : text)
                 .orElse("(no user message)");

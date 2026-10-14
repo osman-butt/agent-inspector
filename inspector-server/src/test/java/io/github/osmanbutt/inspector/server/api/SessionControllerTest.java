@@ -137,6 +137,19 @@ class SessionControllerTest {
     }
 
     @Test
+    void aTextPartWithoutTextDoesNotBreakSessions() {
+        store.clear();
+        save(pending("dmr", "/chat/completions", """
+                {"model": "ai/qwen3", "messages": [{"role": "user", "content": [{"type": "text"}]}]}
+                """, Map.of()), read("openai/tool-result.response.json"));
+
+        assertThat(mvc.get().uri("/api/sessions"))
+                .hasStatusOk()
+                .bodyJson()
+                .extractingPath("$[0].title").isEqualTo("(no user message)");
+    }
+
+    @Test
     void unknownSessionIsNotFound() {
         assertThat(mvc.get().uri("/api/sessions/nope")).hasStatus(404);
     }
