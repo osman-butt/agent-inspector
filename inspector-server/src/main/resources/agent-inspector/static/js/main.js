@@ -217,10 +217,23 @@ async function copyCurl(button) {
     setTimeout(() => button.textContent = 'Copy as cURL', 1500);
 }
 
+/** From the step summary to the round-trip it happened in, or straight to a tool's card. */
+function scrollToStep(step, tool) {
+    const id = tool?.dataset.toolCallId;
+    const target = (id && detailEl.querySelector(`.timeline .tool-card[data-tool-call-id="${CSS.escape(id)}"]`))
+        ?? detailEl.querySelector(`.turn[data-turn="${CSS.escape(step.dataset.scrollTurn)}"]`);
+    target?.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
 detailEl.addEventListener('click', event => {
     const copy = event.target.closest('.copy-curl');
     if (copy) {
         copyCurl(copy);
+        return;
+    }
+    const step = event.target.closest('.step');
+    if (step) {
+        scrollToStep(step, event.target.closest('.step-tool'));
         return;
     }
     const tab = event.target.closest('.tab');

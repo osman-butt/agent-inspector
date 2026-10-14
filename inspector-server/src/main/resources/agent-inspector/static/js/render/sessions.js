@@ -1,5 +1,6 @@
 import {escapeHtml, formatDuration, formatTime, formatTokens, statusClass} from '../util.js';
 import {renderAnswer, renderMessage, toolNames} from './conversation.js';
+import {renderSteps, sessionSteps} from './steps.js';
 import {renderWire} from './wire.js';
 
 function plural(count, word) {
@@ -43,7 +44,7 @@ function renderTurn(turn, index, names, executions) {
             ? `<div class="box error"><pre>${escapeHtml(turn.error)}</pre></div>`
             : '<p class="muted">Waiting for the model…</p>';
     return `
-        <li class="turn">
+        <li class="turn" data-turn="${index}">
             <div class="turn-head">
                 <button type="button" class="turn-open" data-exchange-id="${escapeHtml(exchange.id)}"
                         title="Open this round-trip">Round-trip ${index + 1} ↗</button>
@@ -148,7 +149,11 @@ export function renderSessionDetail(session) {
                 ${summary.failed ? '<span class="badge status-bad">failed</span>' : ''}
             </div>
         </div>
-        <ol class="timeline">${renderTimeline(session, names)}</ol>`;
+        ${renderSteps(sessionSteps(session))}
+        <div class="section">
+            <h3>Timeline</h3>
+            <ol class="timeline">${renderTimeline(session, names)}</ol>
+        </div>`;
 }
 
 /** Round-trips in order, each ChatClient call's panel placed before the first round-trip it made. */

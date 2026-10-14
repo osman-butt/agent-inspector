@@ -267,8 +267,43 @@ details.message[open] > summary { margin-bottom: 6px; }
 
 /* Sessions */
 .detail-head h2.session-title { font-family: var(--sans); font-size: 16px; }
+.detail-head + .section { margin-top: 16px; }
 .back { margin-bottom: 12px; }
-.timeline { list-style: none; margin: 16px 0 0; padding: 0 0 0 18px; border-left: 2px solid var(--border); }
+.timeline { list-style: none; margin: 8px 0 0; padding: 0 0 0 18px; border-left: 2px solid var(--border); }
+
+/* Step summary: the session at a glance, each row jumps to its round-trip */
+.steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: step;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+.step {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 2em 5.5em 1fr auto;
+    gap: 8px;
+    align-items: baseline;
+    padding: 5px 12px;
+    cursor: pointer;
+}
+.step + .step { border-top: 1px solid var(--border); }
+.step:hover { background: var(--panel-2); }
+.step::before { content: counter(step); color: var(--muted); font-size: 12px; text-align: right; }
+.step-kind { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.step-user .step-kind { color: var(--role-user); }
+.step-model .step-kind { color: var(--role-assistant); }
+.step-tools .step-kind { color: var(--role-tool); }
+.step-text { min-width: 0; overflow-wrap: anywhere; }
+.step-meta { font-size: 12px; white-space: nowrap; }
+.step-tool { font-size: 12.5px; padding: 1px 8px; margin: 1px 4px 1px 0; }
+.step-tool.ok { color: var(--ok); }
+.step-tool.failed { color: var(--bad); border-color: var(--bad); }
+.step-tool.running, .step-tool.unknown { color: var(--muted); }
+.step-tool b, .step-tool .badge { color: var(--text); }
 .turn { position: relative; margin-bottom: 20px; }
 .turn::before {
     content: "";
@@ -310,4 +345,6 @@ details.resent .message { opacity: .75; }
 @media (max-width: 760px) {
     .layout { grid-template-columns: 1fr; grid-template-rows: 40% 60%; }
     .sidebar { border-right: 0; border-bottom: 1px solid var(--border); }
+    .step { grid-template-columns: 1.5em 1fr; }
+    .step-text, .step-meta { grid-column: 2; }
 }
