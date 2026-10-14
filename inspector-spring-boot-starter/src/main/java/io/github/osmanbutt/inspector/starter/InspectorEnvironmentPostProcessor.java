@@ -28,7 +28,9 @@ import java.util.function.Predicate;
  * when one runs there. Otherwise it starts one inside this app, on that port or the next free one
  * of the nine after it, so adding the starter is all it takes. Set
  * {@code agent.inspector.embedded.enabled=false} to only use a running inspector, or
- * {@code agent.inspector.enabled=false} to opt out completely.
+ * {@code agent.inspector.enabled=false} to opt out completely. An inspector started inside the app
+ * stops when the app has nothing left running, so command-line apps exit; set
+ * {@code agent.inspector.embedded.keep-alive=true} to keep it up for browsing the results.
  */
 public class InspectorEnvironmentPostProcessor implements EnvironmentPostProcessor {
 
@@ -44,6 +46,10 @@ public class InspectorEnvironmentPostProcessor implements EnvironmentPostProcess
     private static final int ROUTE_NAMES = 9;
 
     private record Inspector(String url, InspectorConnection connection, boolean embedded) {
+    }
+
+    /** Where a provider's traffic goes now, and the property that says so. */
+    private record Target(Provider provider, String property, String upstream) {
     }
 
     /**
@@ -94,11 +100,17 @@ public class InspectorEnvironmentPostProcessor implements EnvironmentPostProcess
         if (!environment.getProperty("agent.inspector.enabled", Boolean.class, true)) {
             return;
         }
-        List<Provider> providers = PROVIDERS.stream().filter(provider -> classPresent.test(provider.markerClass())).toList();
-        if (providers.isEmpty()) {
-            return;
-        }
         String configured = environment.getProperty("agent.inspector.url", DEFAULT_URL).replaceAll("/+$", "");
+        List<Target> targets = PROVIDERS.stream()
+                .filter(provider -> classPresent.test(provider.markerClass()))
+                .map(provider -> target(environment, provider))
+                // Already proxied by hand, or a setup the proxy would break.
+                .filter(target -> !target.upstream().startsWith(configured)
+                        && target.provider().bypass().stream().noneMatch(target.upstream()::contains))
+                .toList();
+        if (targets.isEmpty()) {
+            return; // nothing to route, so no inspector is needed
+        }
         Inspector inspector = find(environment, configured);
         if (inspector == null) {
             log.debug("No Agent Inspector at " + configured + ", model traffic goes direct");
@@ -107,8 +119,8 @@ public class InspectorEnvironmentPostProcessor implements EnvironmentPostProcess
 
         String app = environment.getProperty("spring.application.name", "app");
         Map<String, Object> overrides = new LinkedHashMap<>();
-        for (Provider provider : providers) {
-            route(environment, inspector, configured, app, provider, overrides);
+        for (Target target : targets) {
+            route(inspector, app, target, overrides);
         }
         if (!overrides.isEmpty()) {
             overrides.put("agent.inspector.active", "true");
@@ -118,6 +130,10 @@ public class InspectorEnvironmentPostProcessor implements EnvironmentPostProcess
             // First, so it wins over application.properties and environment variables.
             environment.getPropertySources().addFirst(new MapPropertySource("agent-inspector", overrides));
             log.info("Agent Inspector UI: " + inspector.url() + (inspector.embedded() ? " (running in this app)" : " (shared)"));
+        }
+        // Also when no route was accepted: the inspector's threads must not keep the app alive.
+        if (inspector.embedded() && !environment.getProperty("agent.inspector.embedded.keep-alive", Boolean.class, false)) {
+            EmbeddedInspector.stopWhenHostEnds();
         }
     }
 
@@ -162,30 +178,34 @@ public class InspectorEnvironmentPostProcessor implements EnvironmentPostProcess
         try {
             return embeddedInspector.test(port);
         } catch (RuntimeException e) {
-            log.warn("Agent Inspector could not start on port " + port + ": " + e.getMessage());
+            log.warn("Agent Inspector could not start on port " + port + ": " + e);
+            log.debug("Agent Inspector start failure", e);
             return false;
         }
     }
 
-    private void route(ConfigurableEnvironment environment, Inspector inspector, String configured, String app,
-                       Provider provider, Map<String, Object> overrides) {
+    private Target target(ConfigurableEnvironment environment, Provider provider) {
         String chatUrl = provider.chatProperty() == null ? null : environment.getProperty(provider.chatProperty());
         String property = hasText(chatUrl) ? provider.chatProperty() : provider.property();
         String upstream = firstText(environment.getProperty(property), hasText(chatUrl) ? null : envVariables.apply(provider.envVariable()),
                 provider.defaultUrl()).replaceAll("/+$", "");
+        return new Target(provider, property, upstream);
+    }
 
-        if (upstream.startsWith(configured) || upstream.startsWith(inspector.url())
-                || provider.bypass().stream().anyMatch(upstream::contains)) {
-            return; // already proxied by hand, or a setup the proxy would break
-        }
+    private void route(Inspector inspector, String app, Target target, Map<String, Object> overrides) {
+        String provider = target.provider().name();
+        String upstream = target.upstream();
         String url = inspector.url();
-        String base = routeName(app + "-" + provider.name());
+        if (upstream.startsWith(url)) {
+            return; // already proxied by hand, through the inspector on a later port
+        }
+        String base = routeName(app + "-" + provider);
         for (int number = 1; number <= ROUTE_NAMES; number++) {
             String route = routeName(base, number);
             switch (inspector.connection().registerRoute(route, upstream, app)) {
                 case ACCEPTED -> {
-                    overrides.put(property, url + "/proxy/" + route);
-                    log.info("Agent Inspector: " + provider.name() + " traffic goes through " + url + "/proxy/" + route
+                    overrides.put(target.property(), url + "/proxy/" + route);
+                    log.info("Agent Inspector: " + provider + " traffic goes through " + url + "/proxy/" + route
                             + " to " + upstream + (number > 1 ? " (" + base + " forwards elsewhere)" : ""));
                     return;
                 }
@@ -193,13 +213,13 @@ public class InspectorEnvironmentPostProcessor implements EnvironmentPostProcess
                     // Another app with the same name and another upstream: try the next name.
                 }
                 case FAILED -> {
-                    log.warn("Agent Inspector at " + url + " did not accept route " + route + ", " + provider.name() + " goes direct");
+                    log.warn("Agent Inspector at " + url + " did not accept route " + route + ", " + provider + " goes direct");
                     return;
                 }
             }
         }
         log.warn("Agent Inspector at " + url + ": routes " + base + " to " + routeName(base, ROUTE_NAMES)
-                + " forward elsewhere, " + provider.name() + " goes direct");
+                + " forward elsewhere, " + provider + " goes direct");
     }
 
     /** Lowercase letters, digits and dashes, as the inspector expects. */

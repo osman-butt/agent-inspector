@@ -98,6 +98,15 @@ class InspectorEnvironmentPostProcessorTest {
     }
 
     @Test
+    void neverStartsAnInspectorWhenNothingWouldBeRouted() {
+        run(Set.of(OPENAI), Map.of(
+                "agent.inspector.url", "http://127.0.0.1:1",
+                "spring.ai.openai.base-url", "https://my-resource.openai.azure.com/openai/v1"));
+
+        assertThat(embedAttempts).isEmpty();
+    }
+
+    @Test
     void usesAnotherRouteNameWhenAnotherAppsUpstreamHasIt() throws Exception {
         try (FakeInspector inspector = inspector()) {
             inspector.taken.add("app-openai");
@@ -160,6 +169,23 @@ class InspectorEnvironmentPostProcessorTest {
                 throw new AssertionError("started a second inspector");
             });
             assertThat(restarted.getProperty("spring.ai.openai.base-url")).isEqualTo(url + "/proxy/app-openai");
+        } finally {
+            EmbeddedInspector.stop();
+        }
+    }
+
+    @Test
+    void watchesAnInspectorItStartedEvenWhenNoRouteWasAccepted() throws Exception {
+        String url = "http://localhost:" + freePort();
+        try {
+            // The inspector refuses an upstream that isn't http(s), so nothing is routed.
+            StandardEnvironment environment = run(Set.of(OPENAI), Map.of(
+                    "agent.inspector.url", url,
+                    "spring.ai.openai.base-url", "ftp://example.invalid"), EmbeddedInspector::start);
+
+            assertThat(environment.getProperty("spring.ai.openai.base-url")).isEqualTo("ftp://example.invalid");
+            assertThat(EmbeddedInspector.isRunning()).isTrue();
+            assertThat(EmbeddedInspector.isWatching()).isTrue();
         } finally {
             EmbeddedInspector.stop();
         }

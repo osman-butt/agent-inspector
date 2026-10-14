@@ -52,11 +52,15 @@ To try the latest unreleased version, use `0.1.0-SNAPSHOT` and add Central's sna
 | `agent.inspector.enabled` | `true` | `false` turns it off |
 | `agent.inspector.url` | `http://localhost:7070` | where the inspector runs |
 | `agent.inspector.embedded.enabled` | `true` | `false` to only use an inspector that is already running |
+| `agent.inspector.embedded.keep-alive` | `false` | `true` keeps the in-app inspector running after a command-line app finishes |
 
 ## Good to know
 
 - It is for development: leave it out of production, or set `agent.inspector.enabled=false` there.
 - A command-line app should set `spring.main.web-application-type=none` (a WebFlux app `reactive`),
   because the starter brings a web server for the inspector.
+- An inspector started inside a command-line app stops when the app has nothing left running, so
+  the app exits on its own. Set `agent.inspector.embedded.keep-alive=true` to keep it up and browse
+  the results after the run.
 - If you build your own `ToolCallingManager`, pass it `.observationRegistry(observationRegistry)` to
   see how long tools take.
