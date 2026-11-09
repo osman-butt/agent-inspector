@@ -47,6 +47,9 @@ async function loadExchange(id) {
 /** What is on screen, so a live re-render of the same item can restore open folds and scroll position. */
 let shown = null;
 
+/** Counts showDetail calls: live updates and clicks overlap, and only the latest may render. */
+let detailRequest = 0;
+
 function renderAll() {
     const count = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
     countEl.textContent = `${count(state.sessions.length, 'session')} · ${count(state.exchanges.length, 'call')}`;
@@ -65,11 +68,20 @@ async function refreshLists() {
 }
 
 async function showDetail() {
+    const request = ++detailRequest;
     let html = emptyDetail;
-    if (state.selected?.kind === 'session') {
-        html = renderSessionDetail(await getSession(state.selected.id));
-    } else if (state.selected) {
-        html = renderExchange(await getExchange(state.selected.id));
+    try {
+        if (state.selected?.kind === 'session') {
+            html = renderSessionDetail(await getSession(state.selected.id));
+        } else if (state.selected) {
+            html = renderExchange(await getExchange(state.selected.id));
+        }
+    } catch (error) {
+        console.warn('Could not load the selected item', error); // keep what is on screen
+        return;
+    }
+    if (request !== detailRequest) {
+        return; // a later call has newer data, or another item was selected meanwhile
     }
     const item = state.selected ? `${state.selected.kind}:${state.selected.id}:${state.tab}` : null;
     const same = item === shown;
@@ -212,8 +224,8 @@ document.querySelector('.list-tabs').addEventListener('click', event => {
 
 /** Copies the call as a curl command and says so on the button for a moment. */
 async function copyCurl(button) {
-    const exchange = await loadExchange(button.dataset.exchangeId);
     try {
+        const exchange = await loadExchange(button.dataset.exchangeId);
         await navigator.clipboard.writeText(toCurl(exchange, location.origin));
         button.textContent = isTruncated(exchange) ? 'Copied (body truncated!)' : 'Copied ✓';
     } catch {

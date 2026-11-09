@@ -17,7 +17,7 @@ public class WeatherTools {
     /** Made-up but stable weather, so the sample needs no weather API. */
     @Tool(description = "Current weather for a city")
     public Weather weather(@ToolParam(description = "City name") String city) {
-        int seed = Math.abs(city.toLowerCase().hashCode());
+        int seed = Math.abs(city.toLowerCase().hashCode() % 1000); // % first: Math.abs(Integer.MIN_VALUE) is negative
         return new Weather(city, seed % 25 - 2, CONDITIONS.get(seed % CONDITIONS.size()));
     }
 }

@@ -6,6 +6,7 @@ import org.springframework.util.unit.DataSize;
 
 import java.net.URI;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -13,12 +14,15 @@ import java.util.Map;
  *                     Added to {@link #DEFAULT_ROUTES}; a route with the same name replaces the default.
  * @param maxExchanges how many exchanges to keep in memory; the oldest are dropped first
  * @param maxBodySize  request and response bodies are stored up to this size
+ * @param allowedHosts host names with dots, besides localhost, that requests may be addressed to;
+ *                     see {@link HostCheckFilter}
  */
 @ConfigurationProperties("agent.inspector")
 public record InspectorProperties(
         Map<String, URI> routes,
         @DefaultValue("500") int maxExchanges,
-        @DefaultValue("5MB") DataSize maxBodySize) {
+        @DefaultValue("5MB") DataSize maxBodySize,
+        List<String> allowedHosts) {
 
     public static final Map<String, URI> DEFAULT_ROUTES = Map.of(
             "openai", URI.create("https://api.openai.com/v1"),
@@ -31,5 +35,6 @@ public record InspectorProperties(
             merged.putAll(routes);
         }
         routes = Map.copyOf(merged);
+        allowedHosts = allowedHosts == null ? List.of() : List.copyOf(allowedHosts);
     }
 }

@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /** Uses the recorded tool loop: round-trip 1 asks for two tools, round-trip 2 sends their results. */
 class SessionTrackerTest {
 
-    final InspectorProperties properties = new InspectorProperties(null, 100, null);
+    final InspectorProperties properties = new InspectorProperties(null, 100, null, null);
     final SessionTracker tracker = new SessionTracker(
             new WireParsers(List.of(new OpenAiChatParser(), new AnthropicMessagesParser()), properties),
             event -> {

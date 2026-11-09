@@ -28,7 +28,7 @@ class WebConfigTest {
     @Test
     void hasTheDefaultRoutesPlusConfiguredOnes() {
         InspectorProperties properties = new InspectorProperties(
-                Map.of("dmr", URI.create("http://other:1234/v1"), "mine", URI.create("http://mine")), 10, null);
+                Map.of("dmr", URI.create("http://other:1234/v1"), "mine", URI.create("http://mine")), 10, null, null);
 
         assertThat(properties.routes()).containsKeys("openai", "anthropic", "mine");
         assertThat(properties.routes().get("dmr")).hasToString("http://other:1234/v1");

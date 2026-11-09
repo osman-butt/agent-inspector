@@ -66,6 +66,10 @@ To try the latest unreleased version, use `0.3.0-SNAPSHOT` and add Central's sna
 ## Good to know
 
 - It is for development: leave it out of production, or set `agent.inspector.enabled=false` there.
+- The inspector only answers requests addressed to `localhost`, an IP address or a name without
+  dots (like a Docker Compose service), so web pages can't reach it through DNS rebinding. To reach
+  it under another name, list that name in `agent.inspector.allowed-hosts` (environment variable
+  `AGENT_INSPECTOR_ALLOWEDHOSTS`).
 - A command-line app should set `spring.main.web-application-type=none` (a WebFlux app `reactive`),
   because the starter brings a web server for the inspector.
 - An inspector started inside a command-line app stops when the app has nothing left running, so

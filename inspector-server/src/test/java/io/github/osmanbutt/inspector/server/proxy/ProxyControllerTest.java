@@ -74,6 +74,19 @@ class ProxyControllerTest {
     }
 
     @Test
+    void forwardsAnApiKeyInTheQueryButRecordsItRedacted() throws Exception {
+        HttpResponse<String> response = client.send(
+                HttpRequest.newBuilder(proxy("/fake/echo?alt=sse&key=AIzaSy-secret-1234567890")).build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.body()).contains("query=alt=sse&key=AIzaSy-secret-1234567890");
+        assertThat(store.findAll().getFirst().request().url())
+                .startsWith(upstream.baseUrl() + "/echo?alt=sse&key=")
+                .doesNotContain("1234567890")
+                .endsWith("(redacted)");
+    }
+
+    @Test
     void recordsButDoesNotForwardTheSessionHeader() throws Exception {
         client.send(HttpRequest.newBuilder(proxy("/fake/echo"))
                         .header("X-Inspector-Session", "my-run")

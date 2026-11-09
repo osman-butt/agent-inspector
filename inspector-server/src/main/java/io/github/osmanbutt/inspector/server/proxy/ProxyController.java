@@ -19,10 +19,12 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Recording reverse proxy. An application points its model base URL at
@@ -47,6 +49,8 @@ public class ProxyController {
     private static final Set<String> SECRET_HEADERS = Set.of(
             "authorization", "proxy-authorization", "x-api-key", "api-key", "x-goog-api-key");
 
+    private static final Set<String> SECRET_PARAMS = Set.of("key", "api-key", "api_key", "apikey");
+
     private final HttpClient httpClient = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(10))
@@ -70,8 +74,9 @@ public class ProxyController {
                 "Unknown route '" + route + "'. Configure agent.inspector.routes." + route));
 
         String path = request.getRequestURI().substring((request.getContextPath() + "/proxy/" + route).length());
-        String query = request.getQueryString() == null ? "" : "?" + request.getQueryString();
-        String url = upstream.toString().replaceAll("/+$", "") + path + query;
+        String query = request.getQueryString();
+        String base = upstream.toString().replaceAll("/+$", "") + path;
+        String url = query == null ? base : base + "?" + query;
         byte[] body = request.getInputStream().readAllBytes();
         long maxBody = properties.maxBodySize().toBytes();
 
@@ -95,8 +100,9 @@ public class ProxyController {
             requestHeaders.put(name.toLowerCase(), redact(name, String.join(", ", Collections.list(request.getHeaders(name)))));
         }
 
+        String recordedUrl = query == null ? base : base + "?" + redactQuery(query);
         Exchange exchange = Exchange.start(route, new Exchange.Request(
-                request.getMethod(), url, path, requestHeaders, BodyCopy.of(body, maxBody).toText(null)));
+                request.getMethod(), recordedUrl, path, requestHeaders, BodyCopy.of(body, maxBody).toText(null)));
         store.save(exchange);
         long start = System.nanoTime();
 
@@ -146,11 +152,24 @@ public class ProxyController {
         }
     }
 
-    /** Keeps a short prefix, enough to tell keys apart, and hides the rest. */
     static String redact(String name, String value) {
-        if (!SECRET_HEADERS.contains(name.toLowerCase())) {
-            return value;
-        }
+        return SECRET_HEADERS.contains(name.toLowerCase()) ? hide(value) : value;
+    }
+
+    /** API keys in the query string, like Gemini's {@code ?key=}, are redacted the same way. */
+    static String redactQuery(String query) {
+        return Arrays.stream(query.split("&", -1))
+                .map(param -> {
+                    int equals = param.indexOf('=');
+                    return equals >= 0 && SECRET_PARAMS.contains(param.substring(0, equals).toLowerCase())
+                            ? param.substring(0, equals + 1) + hide(param.substring(equals + 1))
+                            : param;
+                })
+                .collect(Collectors.joining("&"));
+    }
+
+    /** Keeps a short prefix, enough to tell keys apart, and hides the rest. */
+    private static String hide(String value) {
         return value.substring(0, Math.min(10, value.length() / 3)) + "…(redacted)";
     }
 

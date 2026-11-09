@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -26,6 +27,10 @@ public class ChatClientCallController {
     @PostMapping
     @ResponseStatus(HttpStatus.ACCEPTED)
     public void report(@RequestBody ChatClientCall call) {
+        // Round-trips are matched to calls by app and time, so a call without them can't be placed.
+        if (call.id() == null || call.app() == null || call.startedAt() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "id, app and startedAt are required");
+        }
         store.save(call);
     }
 
