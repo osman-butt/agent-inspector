@@ -170,6 +170,19 @@ class SessionControllerTest {
     }
 
     @Test
+    void refusesAChatClientCallWithoutItsApp() {
+        assertThat(mvc.post().uri("/api/chat-client-calls").contentType("application/json").content("""
+                {"id": "call-2", "startedAt": "%s", "durationMs": 60000, "stream": false, "messages": [], "advisors": []}
+                """.formatted(Instant.now()))).hasStatus(400);
+        // a call without its app would otherwise break every session of an app's route
+        routes.register("other-openai", URI.create("http://localhost:12434/engines/v1"), "other");
+        Exchange exchange = save(pending("other-openai", "/chat/completions", read("openai/tool-call.request.json"), Map.of()),
+                read("openai/tool-call.response.json"));
+        assertThat(mvc.get().uri("/api/sessions/{id}", tracker.placement(exchange.id()).orElseThrow().sessionId()))
+                .hasStatusOk();
+    }
+
+    @Test
     void refusesAnMcpReportWithoutItsApp() {
         assertThat(mvc.post().uri("/api/mcp-tools").contentType("application/json").content("""
                 {"tools": [{"name": "weather", "server": "weather-server"}]}
