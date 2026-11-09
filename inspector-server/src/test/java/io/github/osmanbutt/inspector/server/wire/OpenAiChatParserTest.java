@@ -172,7 +172,7 @@ class OpenAiChatParserTest {
             public ParsedExchange parse(Exchange exchange) {
                 throw new IllegalStateException("boom");
             }
-        }), new InspectorProperties(null, 10, null));
+        }), new InspectorProperties(null, 10, null, null));
 
         assertThat(parsers.parse(garbage)).isEmpty();
         assertThat(parser.parse(garbage).messages()).isEmpty(); // lenient: missing JSON is just empty
