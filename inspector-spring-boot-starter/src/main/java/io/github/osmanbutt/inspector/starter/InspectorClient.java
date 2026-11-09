@@ -51,7 +51,11 @@ public class InspectorClient implements AutoCloseable {
             log.debug("Could not serialize report for " + path, e);
             return;
         }
-        sender.execute(() -> send(path, body));
+        try {
+            sender.execute(() -> send(path, body));
+        } catch (RejectedExecutionException e) {
+            // closed: the application is shutting down
+        }
     }
 
     /**
